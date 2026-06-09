@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Newtonsoft.Json;
 using UnityEngine;
@@ -23,6 +24,19 @@ namespace JorisHoef.ObjectLoading
         Default = 0,
         Disabled = 1,
         UseUnityCache = 2
+    }
+
+    public enum ObjectLoadPhase
+    {
+        None = 0,
+        ResolvingSource = 1,
+        Downloading = 2,
+        LoadingBundle = 3,
+        DiscoveringContent = 4,
+        Instantiating = 5,
+        Diagnostics = 6,
+        Completed = 7,
+        Failed = 8
     }
 
     public enum ObjectLoadErrorCode
@@ -87,6 +101,9 @@ namespace JorisHoef.ObjectLoading
 
     public sealed class ObjectLoadProgress
     {
+        [JsonProperty("phase")]
+        public ObjectLoadPhase Phase { get; private set; }
+
         [JsonProperty("stage")]
         public string Stage { get; private set; }
 
@@ -99,15 +116,131 @@ namespace JorisHoef.ObjectLoading
         [JsonProperty("bytes_received")]
         public long BytesReceived { get; private set; }
 
-        public static ObjectLoadProgress Create(string stage, float normalized, string message, long bytesReceived = 0)
+        [JsonProperty("elapsed_ms")]
+        public long ElapsedMs { get; private set; }
+
+        [JsonProperty("telemetry")]
+        public ObjectLoadTelemetry Telemetry { get; private set; }
+
+        public static ObjectLoadProgress Create(ObjectLoadPhase phase,
+                                                float normalized,
+                                                string message,
+                                                long bytesReceived = 0,
+                                                long elapsedMs = 0,
+                                                ObjectLoadTelemetry telemetry = null)
         {
             return new ObjectLoadProgress
             {
-                Stage = stage,
+                Phase = phase,
+                Stage = ToStageName(phase),
                 Normalized = Mathf.Clamp01(normalized),
                 Message = message,
-                BytesReceived = bytesReceived
+                BytesReceived = bytesReceived,
+                ElapsedMs = elapsedMs,
+                Telemetry = telemetry
             };
+        }
+
+        public static ObjectLoadProgress Create(string stage,
+                                                float normalized,
+                                                string message,
+                                                long bytesReceived = 0,
+                                                long elapsedMs = 0,
+                                                ObjectLoadTelemetry telemetry = null)
+        {
+            ObjectLoadPhase phase = ToPhase(stage);
+            return new ObjectLoadProgress
+            {
+                Phase = phase,
+                Stage = string.IsNullOrWhiteSpace(stage) ? ToStageName(phase) : stage,
+                Normalized = Mathf.Clamp01(normalized),
+                Message = message,
+                BytesReceived = bytesReceived,
+                ElapsedMs = elapsedMs,
+                Telemetry = telemetry
+            };
+        }
+
+        private static ObjectLoadPhase ToPhase(string stage)
+        {
+            if (string.IsNullOrWhiteSpace(stage))
+            {
+                return ObjectLoadPhase.None;
+            }
+
+            string normalized = stage.Trim().Replace("-", "_");
+            if (normalized.Equals("resolve", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("resolving_source", StringComparison.OrdinalIgnoreCase))
+            {
+                return ObjectLoadPhase.ResolvingSource;
+            }
+
+            if (normalized.Equals("download", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("downloading", StringComparison.OrdinalIgnoreCase))
+            {
+                return ObjectLoadPhase.Downloading;
+            }
+
+            if (normalized.Equals("content", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("loading_bundle", StringComparison.OrdinalIgnoreCase))
+            {
+                return ObjectLoadPhase.LoadingBundle;
+            }
+
+            if (normalized.Equals("discovering_content", StringComparison.OrdinalIgnoreCase))
+            {
+                return ObjectLoadPhase.DiscoveringContent;
+            }
+
+            if (normalized.Equals("instantiate", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("instantiating", StringComparison.OrdinalIgnoreCase))
+            {
+                return ObjectLoadPhase.Instantiating;
+            }
+
+            if (normalized.Equals("diagnostics", StringComparison.OrdinalIgnoreCase))
+            {
+                return ObjectLoadPhase.Diagnostics;
+            }
+
+            if (normalized.Equals("completed", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("complete", StringComparison.OrdinalIgnoreCase))
+            {
+                return ObjectLoadPhase.Completed;
+            }
+
+            if (normalized.Equals("failed", StringComparison.OrdinalIgnoreCase)
+                || normalized.Equals("failure", StringComparison.OrdinalIgnoreCase))
+            {
+                return ObjectLoadPhase.Failed;
+            }
+
+            return ObjectLoadPhase.None;
+        }
+
+        private static string ToStageName(ObjectLoadPhase phase)
+        {
+            switch (phase)
+            {
+                case ObjectLoadPhase.ResolvingSource:
+                    return "resolving_source";
+                case ObjectLoadPhase.Downloading:
+                    return "downloading";
+                case ObjectLoadPhase.LoadingBundle:
+                    return "loading_bundle";
+                case ObjectLoadPhase.DiscoveringContent:
+                    return "discovering_content";
+                case ObjectLoadPhase.Instantiating:
+                    return "instantiating";
+                case ObjectLoadPhase.Diagnostics:
+                    return "diagnostics";
+                case ObjectLoadPhase.Completed:
+                    return "completed";
+                case ObjectLoadPhase.Failed:
+                    return "failed";
+                default:
+                    return "none";
+            }
         }
     }
 
@@ -223,6 +356,18 @@ namespace JorisHoef.ObjectLoading
 
         [JsonProperty("scene_count")]
         public int SceneCount { get; set; }
+
+        [JsonProperty("renderer_count")]
+        public int RendererCount { get; set; }
+
+        [JsonProperty("material_count")]
+        public int MaterialCount { get; set; }
+
+        [JsonProperty("missing_shader_material_count")]
+        public int MissingShaderMaterialCount { get; set; }
+
+        [JsonProperty("pink_material_count")]
+        public int PinkMaterialCount { get; set; }
 
         [JsonProperty("cache_mode")]
         public ObjectLoadCacheMode CacheMode { get; set; }

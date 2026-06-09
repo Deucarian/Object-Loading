@@ -22,6 +22,7 @@ It is designed for callers that already know the final AssetBundle URL.
 - Returns a cleanup handle that destroys instantiated GameObjects and unloads the AssetBundle.
 - Reports diagnostics for assets, scenes, renderers, materials, shaders, and likely shader/material problems.
 - Reports timing telemetry for download, bundle load, instantiation, total time, asset count, scene count, and cache status.
+- Reports structured loading phases through `ObjectLoadRequest.Progress`.
 
 ## What It Does Not Do Yet
 
@@ -159,6 +160,19 @@ Calling `Unload()`:
 - warnings for common wrong platform or render pipeline symptoms.
 
 Diagnostics report facts and warnings only. They do not change materials or shaders.
+
+`ObjectLoadRequest.Progress` reports structured phases:
+
+- `ResolvingSource`
+- `Downloading`
+- `LoadingBundle`
+- `DiscoveringContent`
+- `Instantiating`
+- `Diagnostics`
+- `Completed`
+- `Failed`
+
+Progress updates include normalized progress, elapsed milliseconds when available, bytes received, and the latest `ObjectLoadTelemetry` snapshot.
 
 ## Samples
 

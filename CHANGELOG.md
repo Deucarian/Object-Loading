@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.0
+
+- Added structured load phases to progress callbacks.
+- Added elapsed time and telemetry snapshots to progress updates.
+- Added renderer, material, missing shader, and pink material counts to load telemetry.
+- Added completed and failed progress phases for caller diagnostics overlays.
+
 ## 0.2.0
 
 - Replaced the default byte-array AssetBundle path with source-centric loading.

@@ -51,13 +51,14 @@ namespace JorisHoef.ObjectLoading
                     }
                 }
 
-                request?.ReportProgress("download", 0f, "Downloading AssetBundle bytes.");
+                request?.ReportProgress(ObjectLoadPhase.Downloading, 0f, "Downloading AssetBundle bytes.");
                 UnityWebRequestAsyncOperation operation = webRequest.SendWebRequest();
                 while (!operation.isDone)
                 {
                     if (request != null && request.CancellationToken.IsCancellationRequested)
                     {
                         webRequest.Abort();
+                        request.ReportProgress(ObjectLoadPhase.Failed, 1f, "AssetBundle download was canceled.");
                         onCompleted?.Invoke(ObjectDownloadResult.Failure(ObjectLoadError.Create(
                             ObjectLoadErrorCode.Canceled,
                             "AssetBundle download was canceled.",
@@ -71,7 +72,7 @@ namespace JorisHoef.ObjectLoading
                         ? long.MaxValue
                         : (long)downloadedBytes;
                     request?.Progress?.Invoke(ObjectLoadProgress.Create(
-                        "download",
+                        ObjectLoadPhase.Downloading,
                         webRequest.downloadProgress < 0f ? 0f : webRequest.downloadProgress,
                         "Downloading AssetBundle bytes.",
                         bytesReceived));
@@ -80,6 +81,12 @@ namespace JorisHoef.ObjectLoading
 
                 if (webRequest.result != UnityWebRequest.Result.Success)
                 {
+                    request?.ReportProgress(
+                        ObjectLoadPhase.Failed,
+                        1f,
+                        string.IsNullOrWhiteSpace(webRequest.error)
+                            ? "AssetBundle download failed."
+                            : "AssetBundle download failed: " + webRequest.error);
                     onCompleted?.Invoke(ObjectDownloadResult.Failure(ObjectLoadError.Create(
                         ObjectLoadErrorCode.DownloadFailed,
                         string.IsNullOrWhiteSpace(webRequest.error)
@@ -93,6 +100,7 @@ namespace JorisHoef.ObjectLoading
                 byte[] bytes = webRequest.downloadHandler != null ? webRequest.downloadHandler.data : null;
                 if (bytes == null || bytes.Length == 0)
                 {
+                    request?.ReportProgress(ObjectLoadPhase.Failed, 1f, "AssetBundle download returned no bytes.");
                     onCompleted?.Invoke(ObjectDownloadResult.Failure(ObjectLoadError.Create(
                         ObjectLoadErrorCode.EmptyDownload,
                         "AssetBundle download returned no bytes.",
@@ -101,7 +109,7 @@ namespace JorisHoef.ObjectLoading
                     yield break;
                 }
 
-                request?.ReportProgress("download", 1f, "AssetBundle bytes downloaded.");
+                request?.ReportProgress(ObjectLoadPhase.Downloading, 1f, "AssetBundle bytes downloaded.", bytes.Length);
                 onCompleted?.Invoke(ObjectDownloadResult.Success(
                     bytes,
                     webRequest.responseCode,

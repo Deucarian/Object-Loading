@@ -18,22 +18,25 @@ namespace JorisHoef.ObjectLoading
                 yield break;
             }
 
-            request?.ReportProgress("content", 0f, "Loading AssetBundle from memory.");
+            request?.ReportProgress(ObjectLoadPhase.LoadingBundle, 0f, "Loading AssetBundle from memory.");
             AssetBundleCreateRequest bundleRequest = AssetBundle.LoadFromMemoryAsync(bytes);
             yield return bundleRequest;
 
             AssetBundle bundle = bundleRequest.assetBundle;
             if (bundle == null)
             {
+                request?.ReportProgress(ObjectLoadPhase.Failed, 1f, "Downloaded bytes could not be loaded as an AssetBundle.");
                 onCompleted?.Invoke(ObjectContentLoadResult.Failure(ObjectLoadError.Create(
                     ObjectLoadErrorCode.ContentLoadFailed,
                     "Downloaded bytes could not be loaded as an AssetBundle. Check that the URL serves a Unity AssetBundle for the active platform.")));
                 yield break;
             }
 
+            request?.ReportProgress(ObjectLoadPhase.LoadingBundle, 1f, "AssetBundle loaded from memory.", bytes.Length);
+            request?.ReportProgress(ObjectLoadPhase.DiscoveringContent, 0f, "Discovering AssetBundle content.", bytes.Length);
             string[] assetNames = bundle.GetAllAssetNames() ?? new string[0];
             string[] scenePaths = bundle.GetAllScenePaths() ?? new string[0];
-            request?.ReportProgress("content", 1f, "AssetBundle loaded from memory.");
+            request?.ReportProgress(ObjectLoadPhase.DiscoveringContent, 1f, "AssetBundle content is ready.", bytes.Length);
             onCompleted?.Invoke(ObjectContentLoadResult.Success(new AssetBundleContent(bundle, assetNames, scenePaths)));
         }
     }

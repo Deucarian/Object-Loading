@@ -65,7 +65,7 @@ namespace JorisHoef.ObjectLoading
                     yield break;
                 }
 
-                request?.ReportProgress("download", 0f, "Downloading AssetBundle.");
+                request?.ReportProgress(ObjectLoadPhase.Downloading, 0f, "Downloading AssetBundle.", 0, 0, telemetry);
                 Stopwatch downloadTimer = Stopwatch.StartNew();
                 UnityWebRequestAsyncOperation operation = webRequest.SendWebRequest();
                 while (!operation.isDone)
@@ -76,6 +76,13 @@ namespace JorisHoef.ObjectLoading
                         downloadTimer.Stop();
                         telemetry.DownloadTimeMs = downloadTimer.ElapsedMilliseconds;
                         telemetry.BytesReceived = ClampDownloadedBytes(webRequest.downloadedBytes);
+                        request.ReportProgress(
+                            ObjectLoadPhase.Failed,
+                            1f,
+                            "AssetBundle download was canceled.",
+                            telemetry.BytesReceived,
+                            0,
+                            telemetry);
                         onCompleted?.Invoke(ObjectContentLoadResult.Failure(ObjectLoadError.Create(
                             ObjectLoadErrorCode.Canceled,
                             "AssetBundle download was canceled.",
@@ -86,10 +93,12 @@ namespace JorisHoef.ObjectLoading
 
                     telemetry.BytesReceived = ClampDownloadedBytes(webRequest.downloadedBytes);
                     request?.Progress?.Invoke(ObjectLoadProgress.Create(
-                        "download",
+                        ObjectLoadPhase.Downloading,
                         webRequest.downloadProgress < 0f ? 0f : webRequest.downloadProgress,
                         "Downloading AssetBundle.",
-                        telemetry.BytesReceived));
+                        telemetry.BytesReceived,
+                        0,
+                        telemetry));
                     yield return null;
                 }
 
@@ -99,6 +108,15 @@ namespace JorisHoef.ObjectLoading
 
                 if (webRequest.result != UnityWebRequest.Result.Success)
                 {
+                    request?.ReportProgress(
+                        ObjectLoadPhase.Failed,
+                        1f,
+                        string.IsNullOrWhiteSpace(webRequest.error)
+                            ? "AssetBundle download failed."
+                            : "AssetBundle download failed: " + webRequest.error,
+                        telemetry.BytesReceived,
+                        0,
+                        telemetry);
                     onCompleted?.Invoke(ObjectContentLoadResult.Failure(ObjectLoadError.Create(
                         ObjectLoadErrorCode.DownloadFailed,
                         string.IsNullOrWhiteSpace(webRequest.error)
@@ -109,11 +127,13 @@ namespace JorisHoef.ObjectLoading
                     yield break;
                 }
 
-                request?.ReportProgress("content", 0f, "Reading downloaded AssetBundle.");
+                request?.ReportProgress(ObjectLoadPhase.Downloading, 1f, "AssetBundle downloaded.", telemetry.BytesReceived, 0, telemetry);
+                request?.ReportProgress(ObjectLoadPhase.LoadingBundle, 0f, "Reading downloaded AssetBundle.", telemetry.BytesReceived, 0, telemetry);
                 Stopwatch bundleTimer = Stopwatch.StartNew();
                 AssetBundle bundle = DownloadHandlerAssetBundle.GetContent(webRequest);
                 bundleTimer.Stop();
                 telemetry.BundleLoadTimeMs = bundleTimer.ElapsedMilliseconds;
+                request?.ReportProgress(ObjectLoadPhase.LoadingBundle, 1f, "AssetBundle loaded.", telemetry.BytesReceived, 0, telemetry);
 
                 CompleteBundleLoad(bundle, source.Url, telemetry, request, onCompleted);
             }
@@ -144,7 +164,7 @@ namespace JorisHoef.ObjectLoading
             telemetry.CacheStatus = "local-file";
             telemetry.BytesReceived = new FileInfo(path).Length;
 
-            request?.ReportProgress("content", 0f, "Loading AssetBundle from file.");
+            request?.ReportProgress(ObjectLoadPhase.LoadingBundle, 0f, "Loading AssetBundle from file.", telemetry.BytesReceived, 0, telemetry);
             Stopwatch bundleTimer = Stopwatch.StartNew();
             AssetBundleCreateRequest bundleRequest = AssetBundle.LoadFromFileAsync(path, request != null ? request.Crc : 0);
             bool canceled = false;
@@ -152,10 +172,12 @@ namespace JorisHoef.ObjectLoading
             {
                 canceled = canceled || (request != null && request.CancellationToken.IsCancellationRequested);
                 request?.Progress?.Invoke(ObjectLoadProgress.Create(
-                    "content",
+                    ObjectLoadPhase.LoadingBundle,
                     bundleRequest.progress,
                     "Loading AssetBundle from file.",
-                    telemetry.BytesReceived));
+                    telemetry.BytesReceived,
+                    0,
+                    telemetry));
                 yield return null;
             }
 
@@ -170,6 +192,7 @@ namespace JorisHoef.ObjectLoading
                     bundle.Unload(false);
                 }
 
+                request?.ReportProgress(ObjectLoadPhase.Failed, 1f, "AssetBundle file load was canceled.", telemetry.BytesReceived, 0, telemetry);
                 onCompleted?.Invoke(ObjectContentLoadResult.Failure(ObjectLoadError.Create(
                     ObjectLoadErrorCode.Canceled,
                     "AssetBundle file load was canceled.",
@@ -177,6 +200,7 @@ namespace JorisHoef.ObjectLoading
                 yield break;
             }
 
+            request?.ReportProgress(ObjectLoadPhase.LoadingBundle, 1f, "AssetBundle loaded from file.", telemetry.BytesReceived, 0, telemetry);
             CompleteBundleLoad(bundle, path, telemetry, request, onCompleted);
         }
 
@@ -196,7 +220,7 @@ namespace JorisHoef.ObjectLoading
             telemetry.CacheStatus = "not-cacheable";
             telemetry.BytesReceived = source.Bytes.Length;
 
-            request?.ReportProgress("content", 0f, "Loading AssetBundle from memory.");
+            request?.ReportProgress(ObjectLoadPhase.LoadingBundle, 0f, "Loading AssetBundle from memory.", telemetry.BytesReceived, 0, telemetry);
             Stopwatch bundleTimer = Stopwatch.StartNew();
             AssetBundleCreateRequest bundleRequest = AssetBundle.LoadFromMemoryAsync(
                 source.Bytes,
@@ -206,10 +230,12 @@ namespace JorisHoef.ObjectLoading
             {
                 canceled = canceled || (request != null && request.CancellationToken.IsCancellationRequested);
                 request?.Progress?.Invoke(ObjectLoadProgress.Create(
-                    "content",
+                    ObjectLoadPhase.LoadingBundle,
                     bundleRequest.progress,
                     "Loading AssetBundle from memory.",
-                    telemetry.BytesReceived));
+                    telemetry.BytesReceived,
+                    0,
+                    telemetry));
                 yield return null;
             }
 
@@ -224,12 +250,14 @@ namespace JorisHoef.ObjectLoading
                     bundle.Unload(false);
                 }
 
+                request?.ReportProgress(ObjectLoadPhase.Failed, 1f, "AssetBundle memory load was canceled.", telemetry.BytesReceived, 0, telemetry);
                 onCompleted?.Invoke(ObjectContentLoadResult.Failure(ObjectLoadError.Create(
                     ObjectLoadErrorCode.Canceled,
                     "AssetBundle memory load was canceled.")));
                 yield break;
             }
 
+            request?.ReportProgress(ObjectLoadPhase.LoadingBundle, 1f, "AssetBundle loaded from memory.", telemetry.BytesReceived, 0, telemetry);
             CompleteBundleLoad(bundle, "raw-bytes", telemetry, request, onCompleted);
         }
 
@@ -325,6 +353,7 @@ namespace JorisHoef.ObjectLoading
         {
             if (bundle == null)
             {
+                request?.ReportProgress(ObjectLoadPhase.Failed, 1f, "AssetBundle could not be loaded.", telemetry != null ? telemetry.BytesReceived : 0, 0, telemetry);
                 onCompleted?.Invoke(ObjectContentLoadResult.Failure(ObjectLoadError.Create(
                     ObjectLoadErrorCode.ContentLoadFailed,
                     "AssetBundle could not be loaded. Check that the source serves a Unity AssetBundle for the active platform.",
@@ -332,12 +361,13 @@ namespace JorisHoef.ObjectLoading
                 return;
             }
 
+            request?.ReportProgress(ObjectLoadPhase.DiscoveringContent, 0f, "Discovering AssetBundle content.", telemetry.BytesReceived, 0, telemetry);
             string[] assetNames = bundle.GetAllAssetNames() ?? new string[0];
             string[] scenePaths = bundle.GetAllScenePaths() ?? new string[0];
             telemetry.AssetCount = assetNames.Length;
             telemetry.SceneCount = scenePaths.Length;
 
-            request?.ReportProgress("content", 1f, "AssetBundle content is ready.");
+            request?.ReportProgress(ObjectLoadPhase.DiscoveringContent, 1f, "AssetBundle content is ready.", telemetry.BytesReceived, 0, telemetry);
             onCompleted?.Invoke(ObjectContentLoadResult.Success(
                 new AssetBundleContent(bundle, assetNames, scenePaths),
                 telemetry));

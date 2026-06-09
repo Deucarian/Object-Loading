@@ -63,5 +63,39 @@ namespace JorisHoef.ObjectLoading.Tests
             Assert.AreEqual(7, snapshot.CacheVersion);
             Assert.AreEqual(42, snapshot.Crc);
         }
+
+        [Test]
+        public void ReportProgress_IncludesStructuredPhaseTelemetryAndElapsedTime()
+        {
+            ObjectLoadTelemetry telemetry = new ObjectLoadTelemetry
+            {
+                DownloadTimeMs = 12,
+                BytesReceived = 345
+            };
+            ObjectLoadRequest request = ObjectLoadRequest.FromUrl("https://example.com/object.bundle");
+
+            ObjectLoadProgress progress = null;
+            request.Progress = value => progress = value;
+
+            request.ReportProgress(ObjectLoadPhase.Downloading, 0.5f, "Downloading.", 345, 67, telemetry);
+
+            Assert.NotNull(progress);
+            Assert.AreEqual(ObjectLoadPhase.Downloading, progress.Phase);
+            Assert.AreEqual("downloading", progress.Stage);
+            Assert.AreEqual(0.5f, progress.Normalized);
+            Assert.AreEqual(345, progress.BytesReceived);
+            Assert.AreEqual(67, progress.ElapsedMs);
+            Assert.AreSame(telemetry, progress.Telemetry);
+        }
+
+        [Test]
+        public void ProgressCreate_MapsLegacyStageNamesToStructuredPhases()
+        {
+            ObjectLoadProgress progress = ObjectLoadProgress.Create("instantiate", 1f, "Done.");
+
+            Assert.AreEqual(ObjectLoadPhase.Instantiating, progress.Phase);
+            Assert.AreEqual("instantiate", progress.Stage);
+            Assert.AreEqual(1f, progress.Normalized);
+        }
     }
 }

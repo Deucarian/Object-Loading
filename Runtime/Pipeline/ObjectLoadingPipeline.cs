@@ -63,26 +63,33 @@ namespace JorisHoef.ObjectLoading
                 yield break;
             }
 
-            request.ReportProgress("resolve", 0f, "Resolving object source.");
+            request.ReportProgress(ObjectLoadPhase.ResolvingSource, 0f, "Resolving object source.", 0, totalTimer.ElapsedMilliseconds);
             ObjectSourceResolveResult sourceResult = null;
             yield return _sourceResolver.ResolveAsync(request, value => sourceResult = value);
             if (sourceResult == null || !sourceResult.Succeeded)
             {
-                onCompleted?.Invoke(ObjectLoadResult.Failure(sourceResult?.Error ?? ObjectLoadError.Create(
+                totalTimer.Stop();
+                ObjectLoadError error = sourceResult?.Error ?? ObjectLoadError.Create(
                     ObjectLoadErrorCode.SourceResolutionFailed,
-                    "Could not resolve object source.")));
+                    "Could not resolve object source.");
+                ReportFailed(request, totalTimer, null, error.Message);
+                onCompleted?.Invoke(ObjectLoadResult.Failure(error));
                 yield break;
             }
 
-            request.ReportProgress("resolve", 1f, "Object source resolved.");
+            request.ReportProgress(ObjectLoadPhase.ResolvingSource, 1f, "Object source resolved.", 0, totalTimer.ElapsedMilliseconds);
             AssetBundleContent content = null;
             ObjectContentLoadResult contentResult = null;
             yield return _contentLoader.LoadAsync(sourceResult.Source, request, value => contentResult = value);
             if (contentResult == null || !contentResult.Succeeded)
             {
-                onCompleted?.Invoke(ObjectLoadResult.Failure(contentResult?.Error ?? ObjectLoadError.Create(
+                totalTimer.Stop();
+                ObjectLoadTelemetry contentFailureTelemetry = contentResult != null ? contentResult.Telemetry : null;
+                ObjectLoadError error = contentResult?.Error ?? ObjectLoadError.Create(
                     ObjectLoadErrorCode.ContentLoadFailed,
-                    "Could not load object content.")));
+                    "Could not load object content.");
+                ReportFailed(request, totalTimer, contentFailureTelemetry, error.Message);
+                onCompleted?.Invoke(ObjectLoadResult.Failure(error));
                 yield break;
             }
 
@@ -102,14 +109,20 @@ namespace JorisHoef.ObjectLoading
             if (instantiationResult == null || !instantiationResult.Succeeded)
             {
                 content?.Unload(false);
-                onCompleted?.Invoke(ObjectLoadResult.Failure(instantiationResult?.Error ?? ObjectLoadError.Create(
+                ObjectLoadError error = instantiationResult?.Error ?? ObjectLoadError.Create(
                     ObjectLoadErrorCode.InstantiationFailed,
-                    "Could not instantiate object content.")));
+                    "Could not instantiate object content.");
+                ReportFailed(request, totalTimer, telemetry, error.Message);
+                onCompleted?.Invoke(ObjectLoadResult.Failure(error));
                 yield break;
             }
 
             _lastHandle = instantiationResult.Handle;
+            request.ReportProgress(ObjectLoadPhase.Diagnostics, 0f, "Collecting object diagnostics.", telemetry.BytesReceived, totalTimer.ElapsedMilliseconds, telemetry);
             ObjectDiagnosticsReport report = _diagnostics.CreateReport(instantiationResult.Handle, content);
+            CopyDiagnosticsToTelemetry(report, telemetry);
+            request.ReportProgress(ObjectLoadPhase.Diagnostics, 1f, "Object diagnostics collected.", telemetry.BytesReceived, totalTimer.ElapsedMilliseconds, telemetry);
+            request.ReportProgress(ObjectLoadPhase.Completed, 1f, instantiationResult.Message, telemetry.BytesReceived, totalTimer.ElapsedMilliseconds, telemetry);
             onCompleted?.Invoke(ObjectLoadResult.Success(instantiationResult.Message, instantiationResult.Handle, report, telemetry));
         }
 
@@ -162,20 +175,25 @@ namespace JorisHoef.ObjectLoading
                 byte[] bytes = source.Bytes;
                 if (source.Type != ObjectSourceType.RawBytes)
                 {
+                    request?.ReportProgress(ObjectLoadPhase.Downloading, 0f, "Downloading AssetBundle bytes.", 0, 0, telemetry);
                     ObjectDownloadResult downloadResult = null;
                     yield return _downloader.DownloadAsync(source, request, value => downloadResult = value);
                     downloadTimer.Stop();
 
                     if (downloadResult == null || !downloadResult.Succeeded)
                     {
-                        onCompleted?.Invoke(ObjectContentLoadResult.Failure(downloadResult?.Error ?? ObjectLoadError.Create(
+                        ObjectLoadError error = downloadResult?.Error ?? ObjectLoadError.Create(
                             ObjectLoadErrorCode.DownloadFailed,
-                            "Could not download object content.")));
+                            "Could not download object content.");
+                        request?.ReportProgress(ObjectLoadPhase.Failed, 1f, error.Message, telemetry.BytesReceived, 0, telemetry);
+                        onCompleted?.Invoke(ObjectContentLoadResult.Failure(error));
                         yield break;
                     }
 
                     bytes = downloadResult.Bytes;
                     telemetry.DownloadTimeMs = downloadTimer.ElapsedMilliseconds;
+                    telemetry.BytesReceived = bytes != null ? bytes.Length : 0;
+                    request?.ReportProgress(ObjectLoadPhase.Downloading, 1f, "AssetBundle bytes downloaded.", telemetry.BytesReceived, 0, telemetry);
                 }
                 else
                 {
@@ -185,15 +203,20 @@ namespace JorisHoef.ObjectLoading
                 telemetry.BytesReceived = bytes != null ? bytes.Length : 0;
 
                 Stopwatch bundleTimer = Stopwatch.StartNew();
+                request?.ReportProgress(ObjectLoadPhase.LoadingBundle, 0f, "Loading AssetBundle from bytes.", telemetry.BytesReceived, 0, telemetry);
                 ObjectContentLoadResult contentResult = null;
                 yield return _contentLoader.LoadAsync(bytes, request, value => contentResult = value);
                 bundleTimer.Stop();
 
                 if (contentResult == null || !contentResult.Succeeded)
                 {
-                    onCompleted?.Invoke(contentResult ?? ObjectContentLoadResult.Failure(ObjectLoadError.Create(
+                    ObjectLoadError error = contentResult != null
+                        ? contentResult.Error
+                        : ObjectLoadError.Create(
                         ObjectLoadErrorCode.ContentLoadFailed,
-                        "Could not load object content.")));
+                        "Could not load object content.");
+                    request?.ReportProgress(ObjectLoadPhase.Failed, 1f, error.Message, telemetry.BytesReceived, 0, telemetry);
+                    onCompleted?.Invoke(contentResult ?? ObjectContentLoadResult.Failure(error));
                     yield break;
                 }
 
@@ -204,9 +227,47 @@ namespace JorisHoef.ObjectLoading
                 telemetry.SceneCount = contentResult.Content != null && contentResult.Content.ScenePaths != null
                     ? contentResult.Content.ScenePaths.Length
                     : 0;
+                request?.ReportProgress(ObjectLoadPhase.DiscoveringContent, 1f, "AssetBundle content is ready.", telemetry.BytesReceived, 0, telemetry);
 
                 onCompleted?.Invoke(ObjectContentLoadResult.Success(contentResult.Content, telemetry));
             }
+        }
+
+        private static void ReportFailed(ObjectLoadRequest request,
+                                         Stopwatch totalTimer,
+                                         ObjectLoadTelemetry telemetry,
+                                         string message)
+        {
+            if (request == null)
+            {
+                return;
+            }
+
+            if (telemetry != null)
+            {
+                telemetry.TotalTimeMs = totalTimer.ElapsedMilliseconds;
+            }
+
+            request.ReportProgress(
+                ObjectLoadPhase.Failed,
+                1f,
+                string.IsNullOrWhiteSpace(message) ? "Object loading failed." : message,
+                telemetry != null ? telemetry.BytesReceived : 0,
+                totalTimer.ElapsedMilliseconds,
+                telemetry);
+        }
+
+        private static void CopyDiagnosticsToTelemetry(ObjectDiagnosticsReport report, ObjectLoadTelemetry telemetry)
+        {
+            if (report == null || telemetry == null)
+            {
+                return;
+            }
+
+            telemetry.RendererCount = report.RendererCount;
+            telemetry.MaterialCount = report.MaterialCount;
+            telemetry.MissingShaderMaterialCount = report.MissingShaderMaterialCount;
+            telemetry.PinkMaterialCount = report.PinkMaterialCount;
         }
     }
 }

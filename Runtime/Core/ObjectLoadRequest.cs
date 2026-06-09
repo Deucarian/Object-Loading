@@ -167,14 +167,34 @@ namespace JorisHoef.ObjectLoading
             return JsonConvert.SerializeObject(CreateDebugSnapshot(), Formatting.Indented);
         }
 
-        public void ReportProgress(string stage, float normalized, string message)
+        public void ReportProgress(ObjectLoadPhase phase,
+                                   float normalized,
+                                   string message,
+                                   long bytesReceived = 0,
+                                   long elapsedMs = 0,
+                                   ObjectLoadTelemetry telemetry = null)
         {
             if (Progress == null)
             {
                 return;
             }
 
-            Progress.Invoke(ObjectLoadProgress.Create(stage, normalized, message));
+            Progress.Invoke(ObjectLoadProgress.Create(phase, normalized, message, bytesReceived, elapsedMs, telemetry));
+        }
+
+        public void ReportProgress(string stage,
+                                   float normalized,
+                                   string message,
+                                   long bytesReceived = 0,
+                                   long elapsedMs = 0,
+                                   ObjectLoadTelemetry telemetry = null)
+        {
+            if (Progress == null)
+            {
+                return;
+            }
+
+            Progress.Invoke(ObjectLoadProgress.Create(stage, normalized, message, bytesReceived, elapsedMs, telemetry));
         }
 
         public static string StripBearerPrefix(string bearerToken)

@@ -59,7 +59,7 @@ namespace JorisHoef.ObjectLoading
                                                       ObjectLoadRequest request,
                                                       Action<ObjectInstantiationResult> onCompleted)
         {
-            request?.ReportProgress("instantiate", 0f, "Loading GameObject assets from AssetBundle.");
+            request?.ReportProgress(ObjectLoadPhase.Instantiating, 0f, "Loading GameObject assets from AssetBundle.");
             AssetBundleRequest assetRequest = content.Bundle.LoadAllAssetsAsync<GameObject>();
             yield return assetRequest;
 
@@ -87,7 +87,7 @@ namespace JorisHoef.ObjectLoading
                 instance.name = prefabs[i].name;
             }
 
-            request?.ReportProgress("instantiate", 1f, "Instantiated AssetBundle GameObject assets.");
+            request?.ReportProgress(ObjectLoadPhase.Instantiating, 1f, "Instantiated AssetBundle GameObject assets.");
             onCompleted?.Invoke(ObjectInstantiationResult.Success(
                 new ObjectLoadHandle(root, content.Bundle),
                 "Ready with AssetBundle object from " + prefabs.Count + " GameObject asset(s)."));
@@ -98,7 +98,7 @@ namespace JorisHoef.ObjectLoading
                                                     Action<ObjectInstantiationResult> onCompleted)
         {
             string scenePath = content.ScenePaths[0];
-            request?.ReportProgress("instantiate", 0f, "Loading bundled scene.");
+            request?.ReportProgress(ObjectLoadPhase.Instantiating, 0f, "Loading bundled scene.");
 
             AsyncOperation operation = SceneManager.LoadSceneAsync(scenePath, LoadSceneMode.Additive);
             if (operation == null)
@@ -154,7 +154,7 @@ namespace JorisHoef.ObjectLoading
                 yield return unloadOperation;
             }
 
-            request?.ReportProgress("instantiate", 1f, "Instantiated bundled scene content.");
+            request?.ReportProgress(ObjectLoadPhase.Instantiating, 1f, "Instantiated bundled scene content.");
             onCompleted?.Invoke(ObjectInstantiationResult.Success(
                 new ObjectLoadHandle(root, content.Bundle),
                 "Ready with AssetBundle scene: " + Path.GetFileNameWithoutExtension(scenePath) + "."));
