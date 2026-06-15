@@ -1,7 +1,7 @@
 {
   "name": "com.deucarian.object-loading",
   "displayName": "Deucarian Object Loading",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "unity": "2021.3",
   "description": "Minimal runtime-safe object and scene loading pipeline for direct AssetBundle URLs.",
   "keywords": [
@@ -15,7 +15,7 @@
     "name": "Deucarian"
   },
   "dependencies": {
-    "com.unity.nuget.newtonsoft-json": "3.2.1"
+    "com.unity.nuget.newtonsoft-json": "3.2.2"
   },
   "samples": [
     {

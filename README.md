@@ -1,5 +1,7 @@
 # Deucarian Object Loading
 
+## Overview
+
 `com.deucarian.object-loading` is a small Unity UPM package for loading AssetBundle-based object or scene content at runtime.
 
 The package owns only the generic loading pipeline:
@@ -37,17 +39,19 @@ It is designed for callers that already know the final AssetBundle URL.
 
 Keep backend-specific source selection outside this core package. Pass the resolved URL, token, and headers into `ObjectLoadRequest`.
 
-## Install
+## Installation
 
 Add the package to a Unity project through Package Manager using this package folder or a Git URL, then import the optional sample from Package Manager.
 
 The package depends on Unity's Newtonsoft Json package:
 
 ```json
-"com.unity.nuget.newtonsoft-json": "3.2.1"
+"com.unity.nuget.newtonsoft-json": "3.2.2"
 ```
 
-## Direct URL Loading
+## Usage
+
+### Direct URL Loading
 
 ```csharp
 using System.Collections;
@@ -200,3 +204,11 @@ Import `Direct URL AssetBundle Loader` from Package Manager. The sample scene pr
 - status text,
 - diagnostics output,
 - reusable Object Loading diagnostics overlay with JSON copy.
+
+## Tests
+
+Run the package's EditMode tests in Unity. Tests cover request modeling, URL/source resolution, result handling, cleanup handles, and diagnostics behavior.
+
+## License
+
+See [LICENSE.md](LICENSE.md).
