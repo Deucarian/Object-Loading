@@ -15,6 +15,7 @@
     "name": "Deucarian"
   },
   "dependencies": {
+    "com.deucarian.logging": "0.2.2",
     "com.unity.nuget.newtonsoft-json": "3.2.2"
   },
   "samples": [

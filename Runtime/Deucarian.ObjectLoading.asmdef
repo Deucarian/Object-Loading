@@ -2,6 +2,7 @@
   "name": "Deucarian.ObjectLoading",
   "rootNamespace": "Deucarian.ObjectLoading",
   "references": [
+    "Deucarian.Logging",
     "Newtonsoft.Json"
   ],
   "includePlatforms": [],
