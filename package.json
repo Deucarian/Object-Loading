@@ -19,7 +19,7 @@
     "url": "git+https://github.com/Deucarian/Object-Loading.git"
   },
   "dependencies": {
-    "com.deucarian.logging": "0.2.2",
+    "com.deucarian.logging": "0.2.5",
     "com.unity.nuget.newtonsoft-json": "3.2.2"
   },
   "samples": [
