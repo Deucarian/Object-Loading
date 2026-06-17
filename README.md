@@ -25,7 +25,7 @@ It is designed for callers that already know the final AssetBundle URL.
 - Reports diagnostics for assets, scenes, renderers, materials, shaders, and likely shader/material problems.
 - Reports timing telemetry for download, bundle load, instantiation, total time, asset count, scene count, and cache status.
 - Reports structured loading phases through `ObjectLoadRequest.Progress`.
-- Provides an optional runtime diagnostics overlay and JSON copy/export for development builds.
+- Exposes explicit current state, latest result, last error, timing telemetry, active pipeline components, and loaded object metadata for callers and optional integrations.
 
 ## What It Does Not Do Yet
 
@@ -33,6 +33,7 @@ It is designed for callers that already know the final AssetBundle URL.
 - No Addressables integration.
 - No backend project/object/version lookup.
 - No API dependency in the core package.
+- No Diagnostics package dependency in the core package.
 - No material remapping, shader replacement, or render pipeline fixes.
 - No ServiceLocator.
 - No cache eviction policy or storage quota management.
@@ -54,7 +55,7 @@ The package depends on Deucarian Logging and Unity's Newtonsoft Json package:
 
 This package uses `com.deucarian.logging`.
 
-Object Loading diagnostics use stable package categories: `ObjectLoading`, `ObjectLoading.Downloader`, `ObjectLoading.Loader`, `ObjectLoading.Instantiation`, and `ObjectLoading.Diagnostics`. Configure Deucarian Logging filters by category and level to isolate download, load, instantiation, or diagnostics output. Entries flow through the shared ring buffer for recent-diagnostic inspection and remain compatible with future telemetry sinks.
+Object Loading uses stable package categories: `ObjectLoading`, `ObjectLoading.Downloader`, `ObjectLoading.Loader`, `ObjectLoading.Instantiation`, and `ObjectLoading.Diagnostics`. Configure Deucarian Logging filters by category and level to isolate download, load, instantiation, or object metadata output.
 
 ## Usage
 
@@ -186,19 +187,28 @@ Diagnostics report facts and warnings only. They do not change materials or shad
 
 Progress updates include normalized progress, elapsed milliseconds when available, bytes received, and the latest `ObjectLoadTelemetry` snapshot.
 
-Use the optional runtime overlay when a project wants package-level developer visibility without building its own UI:
+The pipeline exposes explicit state data when a project wants package-level developer visibility without adding another dependency:
 
 ```csharp
-ObjectLoadingDiagnosticsOverlay overlay = ObjectLoadingDiagnosticsOverlay.CreateIfEnabled(debugEnabled);
-overlay?.Begin(request);
-if (overlay != null)
-{
-    request.Progress = overlay.RecordProgress;
-}
-yield return pipeline.LoadAsync(request, result => overlay?.RecordResult(result));
+yield return pipeline.LoadAsync(request, result => Debug.Log(result.Message));
+
+ObjectLoadingDiagnosticSnapshot state = pipeline.CreateDiagnosticSnapshot();
+ObjectLoadResult latest = pipeline.LatestLoadResult;
+ObjectLoadError lastError = pipeline.LastError;
+ObjectLoadTelemetry timings = pipeline.LatestTelemetry;
 ```
 
-The overlay shows only generic Object Loading state: phase, progress, elapsed time, download/bundle/instantiate timings, byte counts, asset/scene counts, renderer/material counts, and shader warning counts. It does not display request URLs, bearer tokens, backend IDs, or caller-specific API timings.
+Snapshot data includes current phase/stage/progress, latest load result, last error, timing telemetry, active resolver/loader/instantiator names where available, loaded object names, and loaded content metadata where available.
+
+Object Loading does not depend on `com.deucarian.diagnostics`. When Diagnostics is installed, the optional `Deucarian.ObjectLoading.Diagnostics` assembly compiles and provides an explicit provider registration helper:
+
+```csharp
+using Deucarian.ObjectLoading.Diagnostics;
+
+IDisposable registration = ObjectLoadingDiagnostics.Register(pipeline);
+```
+
+That provider appears as an Object Loading section inside the shared Deucarian Diagnostics runtime overlay and editor window.
 
 ## Samples
 
@@ -209,8 +219,7 @@ Import `Direct URL AssetBundle Loader` from Package Manager. The sample scene pr
 - optional custom header input,
 - load/unload buttons,
 - status text,
-- diagnostics output,
-- reusable Object Loading diagnostics overlay with JSON copy.
+- Object Loading state and loaded-object metadata output.
 
 ## Tests
 

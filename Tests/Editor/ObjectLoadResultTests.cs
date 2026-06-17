@@ -20,5 +20,25 @@ namespace Deucarian.ObjectLoading.Tests
             Assert.AreEqual(404, result.Error.HttpStatusCode);
             Assert.AreEqual("Download failed.", result.Message);
         }
+
+        [Test]
+        public void Failure_CanPreserveTelemetry()
+        {
+            ObjectLoadError error = ObjectLoadError.Create(
+                ObjectLoadErrorCode.DownloadFailed,
+                "Download failed.");
+            ObjectLoadTelemetry telemetry = new ObjectLoadTelemetry
+            {
+                DownloadTimeMs = 42,
+                BytesReceived = 2048
+            };
+
+            ObjectLoadResult result = ObjectLoadResult.Failure(error, telemetry);
+
+            Assert.False(result.Succeeded);
+            Assert.AreSame(telemetry, result.Telemetry);
+            Assert.AreEqual(42, result.Telemetry.DownloadTimeMs);
+            Assert.AreEqual(2048, result.Telemetry.BytesReceived);
+        }
     }
 }

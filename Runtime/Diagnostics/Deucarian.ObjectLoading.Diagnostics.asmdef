@@ -1,0 +1,25 @@
+{
+  "name": "Deucarian.ObjectLoading.Diagnostics",
+  "rootNamespace": "Deucarian.ObjectLoading.Diagnostics",
+  "references": [
+    "Deucarian.ObjectLoading",
+    "Deucarian.Diagnostics"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [
+    "DEUCARIAN_DIAGNOSTICS_INSTALLED"
+  ],
+  "versionDefines": [
+    {
+      "name": "com.deucarian.diagnostics",
+      "expression": "0.1.0",
+      "define": "DEUCARIAN_DIAGNOSTICS_INSTALLED"
+    }
+  ],
+  "noEngineReferences": false
+}

@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.1.0
+
+- Moved broad runtime diagnostics overlay, snapshot JSON export, and snapshot console formatting out of Object Loading.
+- Added explicit pipeline state access for current phase/stage/progress, latest result, last error, timing telemetry, active pipeline components, and loaded object metadata.
+- Added a failure-result overload that preserves available telemetry.
+- Updated the direct URL sample to display Object Loading state data without depending on a diagnostics overlay.
+- Added an optional Object Loading diagnostics provider assembly that compiles only when `com.deucarian.diagnostics` is installed.
+- Documented that Deucarian Diagnostics integration is optional and does not add a hard package dependency.
+
 ## 0.4.1
 
 - Aligned the Newtonsoft Json dependency to `3.2.2` with the API packages.

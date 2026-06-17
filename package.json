@@ -1,7 +1,7 @@
 {
   "name": "com.deucarian.object-loading",
   "displayName": "Deucarian Object Loading",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "unity": "2021.3",
   "description": "Minimal runtime-safe object and scene loading pipeline for direct AssetBundle URLs.",
   "keywords": [
@@ -25,7 +25,7 @@
   "samples": [
     {
       "displayName": "Direct URL AssetBundle Loader",
-      "description": "Simple runtime sample for loading and unloading an AssetBundle from a direct URL with the reusable diagnostics overlay.",
+      "description": "Simple runtime sample for loading and unloading an AssetBundle from a direct URL while showing Object Loading state data.",
       "path": "Samples~/DirectUrlLoader"
     }
   ]

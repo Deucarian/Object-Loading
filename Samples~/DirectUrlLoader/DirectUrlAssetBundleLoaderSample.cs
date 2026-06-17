@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Text;
 using Deucarian.ObjectLoading;
 using UnityEngine;
 
@@ -9,11 +10,9 @@ public sealed class DirectUrlAssetBundleLoaderSample : MonoBehaviour
     [SerializeField] private string headerName;
     [SerializeField] private string headerValue;
     [SerializeField] private ObjectContentLoadPreference loadPreference = ObjectContentLoadPreference.Automatic;
-    [SerializeField] private bool showDiagnosticsOverlay = true;
 
     private ObjectLoadingPipeline _pipeline;
     private IObjectLoadHandle _handle;
-    private ObjectLoadingDiagnosticsOverlay _diagnosticsOverlay;
     private Coroutine _loadRoutine;
     private Transform _objectRoot;
     private Vector2 _diagnosticsScroll;
@@ -24,7 +23,6 @@ public sealed class DirectUrlAssetBundleLoaderSample : MonoBehaviour
     {
         _pipeline = new ObjectLoadingPipeline();
         EnsureSceneObjects();
-        _diagnosticsOverlay = ObjectLoadingDiagnosticsOverlay.CreateIfEnabled(showDiagnosticsOverlay);
     }
 
     private void OnDestroy()
@@ -60,20 +58,6 @@ public sealed class DirectUrlAssetBundleLoaderSample : MonoBehaviour
             (int)loadPreference,
             new[] { "Automatic", "Scene first", "Prefab first" },
             3);
-
-        bool requestedOverlay = GUILayout.Toggle(showDiagnosticsOverlay, "Show Object Loading diagnostics overlay");
-        if (requestedOverlay != showDiagnosticsOverlay)
-        {
-            showDiagnosticsOverlay = requestedOverlay;
-            if (showDiagnosticsOverlay)
-            {
-                _diagnosticsOverlay = ObjectLoadingDiagnosticsOverlay.CreateIfEnabled(true);
-            }
-            else if (_diagnosticsOverlay != null)
-            {
-                _diagnosticsOverlay.SetVisible(false);
-            }
-        }
 
         GUILayout.BeginHorizontal();
         GUI.enabled = _loadRoutine == null;
@@ -138,13 +122,11 @@ public sealed class DirectUrlAssetBundleLoaderSample : MonoBehaviour
         request.DisplayName = "Sample Loaded Object";
         request.BearerToken = bearerToken;
         request.LoadPreference = loadPreference;
-        _diagnosticsOverlay = ObjectLoadingDiagnosticsOverlay.CreateIfEnabled(showDiagnosticsOverlay);
-        _diagnosticsOverlay?.Begin(request);
         request.Progress = progress =>
         {
             int percent = Mathf.RoundToInt(progress.Normalized * 100f);
             _status = progress.Stage + " " + percent + "% - " + progress.Message;
-            _diagnosticsOverlay?.RecordProgress(progress);
+            _diagnostics = FormatState(_pipeline.CreateDiagnosticSnapshot());
         };
 
         if (!string.IsNullOrWhiteSpace(headerName))
@@ -154,20 +136,17 @@ public sealed class DirectUrlAssetBundleLoaderSample : MonoBehaviour
 
         ObjectLoadResult result = null;
         yield return _pipeline.LoadAsync(request, value => result = value);
-        _diagnosticsOverlay?.RecordResult(result);
 
         if (result != null && result.Succeeded)
         {
             _handle = result.Handle;
             _status = result.Message;
-            _diagnostics = result.Diagnostics != null ? result.Diagnostics.ToText() : string.Empty;
+            _diagnostics = FormatState(_pipeline.CreateDiagnosticSnapshot());
         }
         else
         {
             _status = result != null ? result.Message : "Object load finished without a result.";
-            _diagnostics = result?.Error != null
-                ? Newtonsoft.Json.JsonConvert.SerializeObject(result.Error, Newtonsoft.Json.Formatting.Indented)
-                : string.Empty;
+            _diagnostics = FormatState(_pipeline.CreateDiagnosticSnapshot());
         }
 
         _loadRoutine = null;
@@ -187,6 +166,49 @@ public sealed class DirectUrlAssetBundleLoaderSample : MonoBehaviour
         }
 
         _diagnostics = string.Empty;
+    }
+
+    private static string FormatState(ObjectLoadingDiagnosticSnapshot state)
+    {
+        if (state == null)
+        {
+            return string.Empty;
+        }
+
+        StringBuilder builder = new StringBuilder();
+        builder.AppendLine("State: " + (state.IsLoading ? "Loading" : "Idle"));
+        builder.AppendLine("Phase: " + state.CurrentPhase);
+        builder.AppendLine("Stage: " + (string.IsNullOrWhiteSpace(state.CurrentStage) ? "none" : state.CurrentStage));
+        builder.AppendLine("Progress: " + Mathf.RoundToInt(state.Progress * 100f) + "%");
+        builder.AppendLine("Message: " + (string.IsNullOrWhiteSpace(state.Message) ? "none" : state.Message));
+
+        ObjectLoadTelemetry telemetry = state.LatestTelemetry;
+        if (telemetry != null)
+        {
+            builder.AppendLine("Download: " + telemetry.DownloadTimeMs + " ms");
+            builder.AppendLine("Bundle load: " + telemetry.BundleLoadTimeMs + " ms");
+            builder.AppendLine("Instantiate: " + telemetry.InstantiateTimeMs + " ms");
+            builder.AppendLine("Total: " + telemetry.TotalTimeMs + " ms");
+            builder.AppendLine("Bytes: " + telemetry.BytesReceived);
+            builder.AppendLine("Assets: " + telemetry.AssetCount);
+            builder.AppendLine("Scenes: " + telemetry.SceneCount);
+            builder.AppendLine("Renderers: " + telemetry.RendererCount);
+            builder.AppendLine("Materials: " + telemetry.MaterialCount);
+            builder.AppendLine("Missing shader materials: " + telemetry.MissingShaderMaterialCount);
+        }
+
+        if (state.LastError != null)
+        {
+            builder.AppendLine("Error: " + state.LastError.Code + " - " + state.LastError.Message);
+        }
+
+        if (state.ObjectMetadata != null)
+        {
+            builder.AppendLine();
+            builder.AppendLine(state.ObjectMetadata.ToText());
+        }
+
+        return builder.ToString();
     }
 
     private void EnsureSceneObjects()

@@ -320,13 +320,20 @@ namespace Deucarian.ObjectLoading
 
         public static ObjectLoadResult Failure(ObjectLoadError error)
         {
+            return Failure(error, null, null);
+        }
+
+        public static ObjectLoadResult Failure(ObjectLoadError error,
+                                               ObjectLoadTelemetry telemetry,
+                                               ObjectDiagnosticsReport diagnostics = null)
+        {
             return new ObjectLoadResult
             {
                 Succeeded = false,
                 Message = error != null ? error.Message : "Object loading failed.",
                 Error = error ?? ObjectLoadError.Create(ObjectLoadErrorCode.Unknown, "Object loading failed."),
-                Diagnostics = ObjectDiagnosticsReport.Empty(),
-                Telemetry = ObjectLoadTelemetry.Empty()
+                Diagnostics = diagnostics ?? ObjectDiagnosticsReport.Empty(),
+                Telemetry = telemetry ?? ObjectLoadTelemetry.Empty()
             };
         }
     }

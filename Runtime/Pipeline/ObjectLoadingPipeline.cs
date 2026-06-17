@@ -4,13 +4,21 @@ using System.Diagnostics;
 
 namespace Deucarian.ObjectLoading
 {
-    public sealed class ObjectLoadingPipeline : IObjectLoadingPipeline
+    public sealed class ObjectLoadingPipeline : IObjectLoadingPipeline, IObjectLoadingDiagnosticsSource
     {
         private readonly IObjectSourceResolver _sourceResolver;
         private readonly IObjectSourceContentLoader _contentLoader;
         private readonly IObjectInstantiator _instantiator;
         private readonly IObjectDiagnostics _diagnostics;
+        private readonly ObjectLoadingComponentInfo _componentInfo;
         private IObjectLoadHandle _lastHandle;
+        private ObjectLoadRequestDebugSnapshot _currentRequest;
+        private ObjectLoadProgress _currentProgress;
+        private ObjectLoadResult _latestLoadResult;
+        private ObjectLoadError _lastError;
+        private ObjectLoadTelemetry _latestTelemetry;
+        private ObjectDiagnosticsReport _latestObjectMetadata;
+        private bool _isLoading;
 
         public ObjectLoadingPipeline()
             : this(new DirectUrlSourceResolver(),
@@ -24,11 +32,28 @@ namespace Deucarian.ObjectLoading
                                     IObjectSourceContentLoader contentLoader,
                                     IObjectInstantiator instantiator,
                                     IObjectDiagnostics diagnostics)
+            : this(sourceResolver, contentLoader, instantiator, diagnostics, null, null)
+        {
+        }
+
+        private ObjectLoadingPipeline(IObjectSourceResolver sourceResolver,
+                                      IObjectSourceContentLoader contentLoader,
+                                      IObjectInstantiator instantiator,
+                                      IObjectDiagnostics diagnostics,
+                                      IObjectDownloader downloader,
+                                      IObjectContentLoader byteContentLoader)
         {
             _sourceResolver = sourceResolver ?? throw new ArgumentNullException(nameof(sourceResolver));
             _contentLoader = contentLoader ?? throw new ArgumentNullException(nameof(contentLoader));
             _instantiator = instantiator ?? throw new ArgumentNullException(nameof(instantiator));
             _diagnostics = diagnostics ?? new DefaultObjectDiagnostics();
+            _componentInfo = CreateComponentInfo(
+                _sourceResolver,
+                _contentLoader,
+                downloader,
+                byteContentLoader,
+                _instantiator,
+                _diagnostics);
         }
 
         public ObjectLoadingPipeline(IObjectSourceResolver sourceResolver,
@@ -39,8 +64,75 @@ namespace Deucarian.ObjectLoading
             : this(sourceResolver,
                    new ByteArrayObjectSourceContentLoader(downloader, contentLoader),
                    instantiator,
-                   diagnostics)
+                   diagnostics,
+                   downloader,
+                   contentLoader)
         {
+        }
+
+        public ObjectLoadResult LatestLoadResult
+        {
+            get { return _latestLoadResult; }
+        }
+
+        public ObjectLoadProgress CurrentProgress
+        {
+            get { return _currentProgress; }
+        }
+
+        public ObjectLoadError LastError
+        {
+            get { return _lastError; }
+        }
+
+        public ObjectLoadTelemetry LatestTelemetry
+        {
+            get { return _latestTelemetry; }
+        }
+
+        public ObjectDiagnosticsReport LatestObjectMetadata
+        {
+            get { return _latestObjectMetadata; }
+        }
+
+        public IObjectLoadHandle LastHandle
+        {
+            get { return _lastHandle; }
+        }
+
+        public bool IsLoading
+        {
+            get { return _isLoading; }
+        }
+
+        public ObjectLoadingDiagnosticSnapshot CreateDiagnosticSnapshot()
+        {
+            ObjectLoadingDiagnosticSnapshot state = new ObjectLoadingDiagnosticSnapshot
+            {
+                IsLoading = _isLoading,
+                CurrentRequest = _currentRequest,
+                CurrentProgress = _currentProgress,
+                LatestLoadResult = _latestLoadResult,
+                LastError = _lastError,
+                LatestTelemetry = _latestTelemetry,
+                ObjectMetadata = _latestObjectMetadata,
+                ActiveComponents = _componentInfo,
+                DisplayName = _currentRequest?.DisplayName,
+                SourceType = _currentRequest?.Source != null ? _currentRequest.Source.Type.ToString() : null,
+                CurrentPhase = _currentProgress != null ? _currentProgress.Phase : ObjectLoadPhase.None,
+                CurrentStage = _currentProgress != null ? _currentProgress.Stage : null,
+                Progress = _currentProgress != null ? _currentProgress.Normalized : 0f,
+                Message = _currentProgress != null ? _currentProgress.Message : _latestLoadResult?.Message,
+                ElapsedMs = _currentProgress != null ? _currentProgress.ElapsedMs : _latestTelemetry?.TotalTimeMs ?? 0
+            };
+
+            AddLoadedObjectInfo(state, _lastHandle);
+            return state;
+        }
+
+        public ObjectLoadingDiagnosticSnapshot CreateStateData()
+        {
+            return CreateDiagnosticSnapshot();
         }
 
         public IEnumerator LoadAsync(ObjectLoadRequest request, Action<ObjectLoadResult> onCompleted)
@@ -49,17 +141,33 @@ namespace Deucarian.ObjectLoading
 
             if (request == null)
             {
-                onCompleted?.Invoke(ObjectLoadResult.Failure(ObjectLoadError.Create(
+                ObjectLoadResult result = ObjectLoadResult.Failure(ObjectLoadError.Create(
                     ObjectLoadErrorCode.InvalidRequest,
-                    "Object load request is missing.")));
+                    "Object load request is missing."));
+                _currentRequest = null;
+                RecordProgress(ObjectLoadProgress.Create(ObjectLoadPhase.Failed, 1f, result.Message));
+                RecordResult(result);
+                onCompleted?.Invoke(result);
                 yield break;
             }
 
+            BeginLoad(request);
+            Action<ObjectLoadProgress> originalProgress = request.Progress;
+            request.Progress = progress =>
+            {
+                RecordProgress(progress);
+                originalProgress?.Invoke(progress);
+            };
+
             if (request.CancellationToken.IsCancellationRequested)
             {
-                onCompleted?.Invoke(ObjectLoadResult.Failure(ObjectLoadError.Create(
+                ObjectLoadResult result = ObjectLoadResult.Failure(ObjectLoadError.Create(
                     ObjectLoadErrorCode.Canceled,
-                    "Object load was canceled before it started.")));
+                    "Object load was canceled before it started."));
+                RecordProgress(ObjectLoadProgress.Create(ObjectLoadPhase.Failed, 1f, result.Message));
+                RecordResult(result);
+                RestoreProgress(request, originalProgress);
+                onCompleted?.Invoke(result);
                 yield break;
             }
 
@@ -73,7 +181,10 @@ namespace Deucarian.ObjectLoading
                     ObjectLoadErrorCode.SourceResolutionFailed,
                     "Could not resolve object source.");
                 ReportFailed(request, totalTimer, null, error.Message);
-                onCompleted?.Invoke(ObjectLoadResult.Failure(error));
+                ObjectLoadResult result = ObjectLoadResult.Failure(error);
+                RecordResult(result);
+                RestoreProgress(request, originalProgress);
+                onCompleted?.Invoke(result);
                 yield break;
             }
 
@@ -89,7 +200,10 @@ namespace Deucarian.ObjectLoading
                     ObjectLoadErrorCode.ContentLoadFailed,
                     "Could not load object content.");
                 ReportFailed(request, totalTimer, contentFailureTelemetry, error.Message);
-                onCompleted?.Invoke(ObjectLoadResult.Failure(error));
+                ObjectLoadResult result = ObjectLoadResult.Failure(error, contentFailureTelemetry ?? _latestTelemetry);
+                RecordResult(result);
+                RestoreProgress(request, originalProgress);
+                onCompleted?.Invoke(result);
                 yield break;
             }
 
@@ -113,7 +227,10 @@ namespace Deucarian.ObjectLoading
                     ObjectLoadErrorCode.InstantiationFailed,
                     "Could not instantiate object content.");
                 ReportFailed(request, totalTimer, telemetry, error.Message);
-                onCompleted?.Invoke(ObjectLoadResult.Failure(error));
+                ObjectLoadResult result = ObjectLoadResult.Failure(error, telemetry);
+                RecordResult(result);
+                RestoreProgress(request, originalProgress);
+                onCompleted?.Invoke(result);
                 yield break;
             }
 
@@ -123,7 +240,10 @@ namespace Deucarian.ObjectLoading
             CopyDiagnosticsToTelemetry(report, telemetry);
             request.ReportProgress(ObjectLoadPhase.Diagnostics, 1f, "Object diagnostics collected.", telemetry.BytesReceived, totalTimer.ElapsedMilliseconds, telemetry);
             request.ReportProgress(ObjectLoadPhase.Completed, 1f, instantiationResult.Message, telemetry.BytesReceived, totalTimer.ElapsedMilliseconds, telemetry);
-            onCompleted?.Invoke(ObjectLoadResult.Success(instantiationResult.Message, instantiationResult.Handle, report, telemetry));
+            ObjectLoadResult success = ObjectLoadResult.Success(instantiationResult.Message, instantiationResult.Handle, report, telemetry);
+            RecordResult(success);
+            RestoreProgress(request, originalProgress);
+            onCompleted?.Invoke(success);
         }
 
         public void UnloadLast()
@@ -135,6 +255,88 @@ namespace Deucarian.ObjectLoading
 
             _lastHandle.Unload();
             _lastHandle = null;
+        }
+
+        private static ObjectLoadingComponentInfo CreateComponentInfo(IObjectSourceResolver sourceResolver,
+                                                                      IObjectSourceContentLoader sourceContentLoader,
+                                                                      IObjectDownloader downloader,
+                                                                      IObjectContentLoader contentLoader,
+                                                                      IObjectInstantiator instantiator,
+                                                                      IObjectDiagnostics diagnostics)
+        {
+            return new ObjectLoadingComponentInfo
+            {
+                SourceResolver = GetTypeName(sourceResolver),
+                SourceContentLoader = GetTypeName(sourceContentLoader),
+                Downloader = GetTypeName(downloader),
+                ContentLoader = GetTypeName(contentLoader),
+                Instantiator = GetTypeName(instantiator),
+                ObjectMetadataCollector = GetTypeName(diagnostics)
+            };
+        }
+
+        private static string GetTypeName(object instance)
+        {
+            return instance == null ? null : instance.GetType().Name;
+        }
+
+        private void BeginLoad(ObjectLoadRequest request)
+        {
+            _isLoading = true;
+            _currentRequest = request.CreateDebugSnapshot();
+            _currentProgress = ObjectLoadProgress.Create(ObjectLoadPhase.ResolvingSource, 0f, "Starting object load.");
+            _latestLoadResult = null;
+            _lastError = null;
+            _latestTelemetry = null;
+            _latestObjectMetadata = null;
+        }
+
+        private void RecordProgress(ObjectLoadProgress progress)
+        {
+            if (progress == null)
+            {
+                return;
+            }
+
+            _currentProgress = progress;
+            if (progress.Telemetry != null)
+            {
+                _latestTelemetry = progress.Telemetry;
+            }
+        }
+
+        private void RecordResult(ObjectLoadResult result)
+        {
+            _latestLoadResult = result;
+            _lastError = result?.Error;
+            _latestTelemetry = result?.Telemetry ?? _latestTelemetry;
+            _latestObjectMetadata = result?.Diagnostics ?? _latestObjectMetadata;
+            _isLoading = false;
+        }
+
+        private static void RestoreProgress(ObjectLoadRequest request, Action<ObjectLoadProgress> originalProgress)
+        {
+            if (request != null)
+            {
+                request.Progress = originalProgress;
+            }
+        }
+
+        private static void AddLoadedObjectInfo(ObjectLoadingDiagnosticSnapshot state, IObjectLoadHandle handle)
+        {
+            if (state == null || handle == null || handle.InstantiatedObjects == null)
+            {
+                return;
+            }
+
+            for (int i = 0; i < handle.InstantiatedObjects.Count; i++)
+            {
+                ObjectLoadingLoadedObjectInfo info = ObjectLoadingLoadedObjectInfo.FromGameObject(handle.InstantiatedObjects[i]);
+                if (info != null)
+                {
+                    state.LoadedObjects.Add(info);
+                }
+            }
         }
 
         private sealed class ByteArrayObjectSourceContentLoader : IObjectSourceContentLoader
