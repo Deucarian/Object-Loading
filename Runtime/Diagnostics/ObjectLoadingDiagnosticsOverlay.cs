@@ -124,7 +124,7 @@ namespace Deucarian.ObjectLoading
 
             if (logToConsole)
             {
-                ObjectLoadingDiagnosticsLogger.LogSnapshot(CreateSnapshot());
+                LogSnapshot(CreateSnapshot());
             }
         }
 
@@ -280,6 +280,29 @@ namespace Deucarian.ObjectLoading
             }
 
             return Mathf.Max(0, Mathf.RoundToInt((float)((Time.realtimeSinceStartupAsDouble - _startedAt) * 1000d)));
+        }
+
+        private static void LogSnapshot(ObjectLoadingDiagnosticsSnapshot snapshot)
+        {
+            if (snapshot == null)
+            {
+                ObjectLoadingLog.Diagnostics.Warning("Diagnostics snapshot is missing.");
+                return;
+            }
+
+            ObjectLoadingLog.Diagnostics.Info(ObjectLoadingDiagnosticsFormatter.FormatSnapshot(snapshot));
+
+            if (snapshot.Diagnostics != null)
+            {
+                ObjectLoadingLog.Diagnostics.Info(
+                    ObjectLoadingDiagnosticsFormatter.FormatDiagnostics(snapshot.Diagnostics));
+            }
+
+            if (snapshot.Error != null)
+            {
+                ObjectLoadingLog.Diagnostics.Warning(
+                    ObjectLoadingDiagnosticsFormatter.FormatError(snapshot.Error));
+            }
         }
 
         private static string FormatPhase(ObjectLoadPhase phase, string fallback)

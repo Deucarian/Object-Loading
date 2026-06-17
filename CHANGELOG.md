@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.4.1
+
+- Aligned the Newtonsoft Json dependency to `3.2.2` with the API packages.
+- Added package license metadata.
+- Updated README structure with overview, installation, usage, tests, and license sections.
+- Standardized package logging on com.deucarian.logging.
+- Added `ObjectLoadingLog` package categories and routed diagnostics logging through Deucarian Logging.
+
 ## 0.4.0
 
 - Added reusable runtime Object Loading diagnostics overlay.
