@@ -203,12 +203,15 @@ Snapshot data includes current phase/stage/progress, latest load result, last er
 Object Loading does not depend on `com.deucarian.diagnostics`. When Diagnostics is installed, the optional `Deucarian.ObjectLoading.Diagnostics` assembly compiles and provides an explicit provider registration helper:
 
 ```csharp
+using System;
 using Deucarian.ObjectLoading.Diagnostics;
 
 IDisposable registration = ObjectLoadingDiagnostics.Register(pipeline);
 ```
 
-That provider appears as an Object Loading section inside the shared Deucarian Diagnostics runtime overlay and editor window.
+Keep and dispose the returned registration with the lifetime of the pipeline or loader that owns it. Re-registering the same source is idempotent and does not add duplicate providers.
+
+That provider appears as an Object Loading section inside the shared Deucarian Diagnostics runtime overlay and editor window. Object Loading does not open or auto-spawn those views.
 
 ## Samples
 

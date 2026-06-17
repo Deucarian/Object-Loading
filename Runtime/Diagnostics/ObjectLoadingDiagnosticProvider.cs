@@ -44,6 +44,7 @@ namespace Deucarian.ObjectLoading.Diagnostics
             section.AddItem("source", "Source", FormatValue(snapshot.SourceType), DiagnosticSeverity.Info);
 
             AddResultItems(section, snapshot);
+            AddErrorItems(section, snapshot);
             AddComponentItems(section, snapshot.ActiveComponents);
             AddTimingItems(section, snapshot.LatestTelemetry);
             AddMetadataItems(section, snapshot);
@@ -64,15 +65,28 @@ namespace Deucarian.ObjectLoading.Diagnostics
                 snapshot.LatestLoadResult.Succeeded ? DiagnosticSeverity.Success : DiagnosticSeverity.Error,
                 snapshot.LatestLoadResult.Message);
 
-            if (snapshot.LastError != null)
+        }
+
+        private static void AddErrorItems(DiagnosticSection section, ObjectLoadingDiagnosticSnapshot snapshot)
+        {
+            AddErrorItem(section, "current_error", "Current Error", snapshot.CurrentError);
+            AddErrorItem(section, "last_error", "Last Error", snapshot.LastError);
+        }
+
+        private static void AddErrorItem(DiagnosticSection section, string key, string label, ObjectLoadError error)
+        {
+            if (error == null)
             {
-                section.AddItem(
-                    "last_error",
-                    "Last Error",
-                    snapshot.LastError.Code.ToString(),
-                    DiagnosticSeverity.Error,
-                    snapshot.LastError.Message);
+                section.AddItem(key, label, "none", DiagnosticSeverity.Info);
+                return;
             }
+
+            section.AddItem(
+                key,
+                label,
+                error.Code.ToString(),
+                DiagnosticSeverity.Error,
+                error.Message);
         }
 
         private static void AddTimingItems(DiagnosticSection section, ObjectLoadTelemetry telemetry)
@@ -116,12 +130,7 @@ namespace Deucarian.ObjectLoading.Diagnostics
         private static void AddMetadataItems(DiagnosticSection section, ObjectLoadingDiagnosticSnapshot snapshot)
         {
             ObjectDiagnosticsReport metadata = snapshot.ObjectMetadata;
-            if (metadata == null)
-            {
-                return;
-            }
-
-            if (metadata.Warnings != null)
+            if (metadata != null && metadata.Warnings != null)
             {
                 for (int i = 0; i < metadata.Warnings.Count; i++)
                 {
@@ -129,15 +138,22 @@ namespace Deucarian.ObjectLoading.Diagnostics
                 }
             }
 
-            if (snapshot.LoadedObjects != null)
+            AddLoadedObjectItems(section, snapshot.LoadedObjects);
+        }
+
+        private static void AddLoadedObjectItems(DiagnosticSection section, System.Collections.Generic.List<ObjectLoadingLoadedObjectInfo> loadedObjects)
+        {
+            if (loadedObjects == null)
             {
-                for (int i = 0; i < snapshot.LoadedObjects.Count; i++)
+                return;
+            }
+
+            for (int i = 0; i < loadedObjects.Count; i++)
+            {
+                ObjectLoadingLoadedObjectInfo loadedObject = loadedObjects[i];
+                if (loadedObject != null)
                 {
-                    ObjectLoadingLoadedObjectInfo loadedObject = snapshot.LoadedObjects[i];
-                    if (loadedObject != null)
-                    {
-                        section.AddItem("loaded_object_" + (i + 1), "Loaded Object", FormatValue(loadedObject.Name), DiagnosticSeverity.Info);
-                    }
+                    section.AddItem("loaded_object_" + (i + 1), "Loaded Object", FormatValue(loadedObject.Name), DiagnosticSeverity.Info);
                 }
             }
         }

@@ -114,6 +114,7 @@ namespace Deucarian.ObjectLoading
                 CurrentProgress = _currentProgress,
                 LatestLoadResult = _latestLoadResult,
                 LastError = _lastError,
+                CurrentError = GetCurrentError(_currentProgress, _latestLoadResult, _lastError),
                 LatestTelemetry = _latestTelemetry,
                 ObjectMetadata = _latestObjectMetadata,
                 ActiveComponents = _componentInfo,
@@ -278,6 +279,20 @@ namespace Deucarian.ObjectLoading
         private static string GetTypeName(object instance)
         {
             return instance == null ? null : instance.GetType().Name;
+        }
+
+        private static ObjectLoadError GetCurrentError(ObjectLoadProgress progress,
+                                                       ObjectLoadResult latestResult,
+                                                       ObjectLoadError lastError)
+        {
+            if (progress == null || progress.Phase != ObjectLoadPhase.Failed)
+            {
+                return null;
+            }
+
+            return latestResult != null && latestResult.Error != null
+                ? latestResult.Error
+                : lastError;
         }
 
         private void BeginLoad(ObjectLoadRequest request)

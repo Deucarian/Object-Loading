@@ -53,6 +53,9 @@ namespace Deucarian.ObjectLoading
         [JsonProperty("last_error")]
         public ObjectLoadError LastError { get; set; }
 
+        [JsonProperty("current_error")]
+        public ObjectLoadError CurrentError { get; set; }
+
         [JsonProperty("latest_telemetry")]
         public ObjectLoadTelemetry LatestTelemetry { get; set; }
 
