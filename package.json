@@ -1,7 +1,7 @@
 {
   "name": "com.deucarian.object-loading",
   "displayName": "Deucarian Object Loading",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "unity": "2021.3",
   "description": "Minimal runtime-safe object and scene loading pipeline for direct AssetBundle URLs.",
   "keywords": [
