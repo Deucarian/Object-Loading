@@ -47,9 +47,11 @@ Add the package to a Unity project through Package Manager using this package fo
 The package depends on Deucarian Logging and Unity's Newtonsoft Json package:
 
 ```json
-"com.deucarian.logging": "0.2.2",
+"com.deucarian.logging": "0.2.5",
 "com.unity.nuget.newtonsoft-json": "3.2.2"
 ```
+
+`com.deucarian.logging` is a runtime dependency for package diagnostics and category-based loading telemetry. Unity's Newtonsoft Json package supports structured debug snapshots and metadata serialization. Diagnostics support is optional through version-defined assemblies, and API-backed loading is supplied by the separate `com.deucarian.object-loading.api-integration` package.
 
 ## Logging
 

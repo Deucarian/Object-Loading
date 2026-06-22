@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.1 - 2026-06-22
+
+- Documented the current package metadata and dependency versions for the 1.1.1 Object Loading package line.
+- Clarified that Logging is a runtime dependency, Diagnostics remains optional through version-defined assemblies, and API-backed loading lives in Object Loading API Integration.
+
 ## 1.1.0
 
 - Moved broad runtime diagnostics overlay, snapshot JSON export, and snapshot console formatting out of Object Loading.
