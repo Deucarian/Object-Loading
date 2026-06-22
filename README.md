@@ -48,7 +48,7 @@ The package depends on Deucarian Common, Deucarian Logging, and Unity's Newtonso
 
 ```json
 "com.deucarian.common": "0.1.0",
-"com.deucarian.logging": "0.2.5",
+"com.deucarian.logging": "1.0.1",
 "com.unity.nuget.newtonsoft-json": "3.2.2"
 ```
 

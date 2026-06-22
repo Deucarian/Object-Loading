@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.1 - 2026-06-22
+
+- Updated the exact `com.deucarian.logging` dependency to `1.0.1`.
+
 ## 1.2.0 - 2026-06-22
 
 - Added `com.deucarian.common` as a runtime dependency for safe transient Unity object cleanup.
