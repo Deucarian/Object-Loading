@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.2.0 - 2026-06-22
+
+- Added `com.deucarian.common` as a runtime dependency for safe transient Unity object cleanup.
+- Replaced the internal Unity object destruction helper with `UnityObjectUtility.DestroySafely`.
+
 ## 1.1.1 - 2026-06-22
 
 - Documented the current package metadata and dependency versions for the 1.1.1 Object Loading package line.

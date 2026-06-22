@@ -44,14 +44,15 @@ Keep backend-specific source selection outside this core package. Pass the resol
 
 Add the package to a Unity project through Package Manager using this package folder or a Git URL, then import the optional sample from Package Manager.
 
-The package depends on Deucarian Logging and Unity's Newtonsoft Json package:
+The package depends on Deucarian Common, Deucarian Logging, and Unity's Newtonsoft Json package:
 
 ```json
+"com.deucarian.common": "0.1.0",
 "com.deucarian.logging": "0.2.5",
 "com.unity.nuget.newtonsoft-json": "3.2.2"
 ```
 
-`com.deucarian.logging` is a runtime dependency for package diagnostics and category-based loading telemetry. Unity's Newtonsoft Json package supports structured debug snapshots and metadata serialization. Diagnostics support is optional through version-defined assemblies, and API-backed loading is supplied by the separate `com.deucarian.object-loading.api-integration` package.
+`com.deucarian.common` is a runtime dependency for safe transient Unity object cleanup when loaded objects are released. `com.deucarian.logging` is a runtime dependency for package diagnostics and category-based loading telemetry. Unity's Newtonsoft Json package supports structured debug snapshots and metadata serialization. Diagnostics support is optional through version-defined assemblies, and API-backed loading is supplied by the separate `com.deucarian.object-loading.api-integration` package.
 
 ## Logging
 
@@ -157,6 +158,8 @@ Calling `Unload()`:
 - destroys instantiated root GameObjects,
 - unloads the AssetBundle with `AssetBundle.Unload(false)`,
 - is safe to call more than once.
+
+Object cleanup uses `Deucarian.Common.UnityObjectUtility.DestroySafely`, preserving Unity's deferred `Object.Destroy` behavior in Play Mode and immediate cleanup outside Play Mode.
 
 `ObjectLoadingPipeline.UnloadLast()` is also available for simple callers that want the pipeline to track the latest successful handle.
 

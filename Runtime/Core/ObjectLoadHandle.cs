@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Deucarian.Common;
 using UnityEngine;
 
 namespace Deucarian.ObjectLoading
@@ -67,7 +68,7 @@ namespace Deucarian.ObjectLoading
 
             for (int i = _instantiatedObjects.Count - 1; i >= 0; i--)
             {
-                UnityObjectUtility.Destroy(_instantiatedObjects[i]);
+                UnityObjectUtility.DestroySafely(_instantiatedObjects[i]);
             }
 
             _instantiatedObjects.Clear();
