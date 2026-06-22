@@ -192,7 +192,9 @@ Progress updates include normalized progress, elapsed milliseconds when availabl
 The pipeline exposes explicit state data when a project wants package-level developer visibility without adding another dependency:
 
 ```csharp
-yield return pipeline.LoadAsync(request, result => Debug.Log(result.Message));
+yield return pipeline.LoadAsync(
+    request,
+    result => ObjectLoadingLog.General.Info(result.Message));
 
 ObjectLoadingDiagnosticSnapshot state = pipeline.CreateDiagnosticSnapshot();
 ObjectLoadResult latest = pipeline.LatestLoadResult;
