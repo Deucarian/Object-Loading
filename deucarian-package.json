@@ -1,0 +1,28 @@
+{
+  "packageId": "com.deucarian.object-loading",
+  "displayName": "Deucarian Object Loading",
+  "ownedCapabilities": [
+    "object-loading"
+  ],
+  "runtimeAssemblies": [
+    "Deucarian.ObjectLoading",
+    "Deucarian.ObjectLoading.Diagnostics"
+  ],
+  "editorAssemblies": [],
+  "sampleAssemblies": [],
+  "testAssemblies": [
+    "Deucarian.ObjectLoading.Diagnostics.Tests",
+    "Deucarian.ObjectLoading.Tests"
+  ],
+  "requiredDependencies": [
+    "com.deucarian.common",
+    "com.deucarian.logging",
+    "com.unity.nuget.newtonsoft-json"
+  ],
+  "optionalVersionDefinedDependencies": [
+    "com.deucarian.diagnostics"
+  ],
+  "allowedDirectDebugCalls": [],
+  "allowedDirectUnityObjectLifetimeCalls": [],
+  "expectedSamplesRoot": "Samples~"
+}
