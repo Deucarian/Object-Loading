@@ -1,6 +1,6 @@
 # Deucarian Object Loading
 
-## Overview
+## What this is
 
 `com.deucarian.object-loading` is a small Unity UPM package for loading AssetBundle-based object or scene content at runtime.
 
@@ -10,7 +10,23 @@ The package owns only the generic loading pipeline:
 
 It is designed for callers that already know the final AssetBundle URL.
 
-## What It Does
+Current package version: `1.2.1`.
+
+## When to use it
+
+- You need to load direct AssetBundle URLs, local AssetBundle files, or explicit raw AssetBundle bytes.
+- You need a runtime-safe load pipeline with progress, telemetry, diagnostics, and cleanup handles.
+- You need optional bearer token/custom header support for direct bundle sources.
+- You want optional Diagnostics integration without making Diagnostics a hard dependency.
+
+## When not to use it
+
+- Do not use Object Loading for backend project/object/version lookup; use the API integration package for that.
+- Do not use it for glTF loading, Addressables integration, render pipeline repair, or material remapping.
+- Do not add Diagnostics as a required dependency for the core loading package.
+- Do not copy Unity object cleanup helpers here; production cleanup uses `com.deucarian.common`.
+
+## What it does
 
 - Loads direct AssetBundle URLs, local AssetBundle files, or explicit raw AssetBundle bytes.
 - Adds optional request headers and optional bearer token auth.
@@ -27,7 +43,7 @@ It is designed for callers that already know the final AssetBundle URL.
 - Reports structured loading phases through `ObjectLoadRequest.Progress`.
 - Exposes explicit current state, latest result, last error, timing telemetry, active pipeline components, and loaded object metadata for callers and optional integrations.
 
-## What It Does Not Do Yet
+## What it does not do yet
 
 - No glTF loading.
 - No Addressables integration.
@@ -40,19 +56,31 @@ It is designed for callers that already know the final AssetBundle URL.
 
 Keep backend-specific source selection outside this core package. Pass the resolved URL, token, and headers into `ObjectLoadRequest`.
 
-## Installation
+## Install
 
-Add the package to a Unity project through Package Manager using this package folder or a Git URL, then import the optional sample from Package Manager.
-
-The package depends on Deucarian Common, Deucarian Logging, and Unity's Newtonsoft Json package:
+Stable:
 
 ```json
-"com.deucarian.common": "0.1.0",
-"com.deucarian.logging": "1.0.1",
-"com.unity.nuget.newtonsoft-json": "3.2.2"
+"com.deucarian.object-loading": "https://github.com/Deucarian/Object-Loading.git#main"
 ```
 
-`com.deucarian.common` is a runtime dependency for safe transient Unity object cleanup when loaded objects are released. `com.deucarian.logging` is a runtime dependency for package diagnostics and category-based loading telemetry. Unity's Newtonsoft Json package supports structured debug snapshots and metadata serialization. Diagnostics support is optional through version-defined assemblies, and API-backed loading is supplied by the separate `com.deucarian.object-loading.api-integration` package.
+Development:
+
+```json
+"com.deucarian.object-loading": "https://github.com/Deucarian/Object-Loading.git#develop"
+```
+
+Dependencies:
+
+- `com.deucarian.common`: approved transient Unity object cleanup when loaded objects are released.
+- `com.deucarian.logging`: package diagnostics and category-based loading telemetry.
+- `com.unity.nuget.newtonsoft-json`: structured debug snapshots and metadata serialization.
+
+Diagnostics support is optional through version-defined assemblies, and API-backed loading is supplied by the separate `com.deucarian.object-loading.api-integration` package.
+
+## Unity compatibility
+
+Requires Unity 2021.3 or newer.
 
 ## Logging
 
@@ -60,9 +88,9 @@ This package uses `com.deucarian.logging`.
 
 Object Loading uses stable package categories: `ObjectLoading`, `ObjectLoading.Downloader`, `ObjectLoading.Loader`, `ObjectLoading.Instantiation`, and `ObjectLoading.Diagnostics`. Configure Deucarian Logging filters by category and level to isolate download, load, instantiation, or object metadata output.
 
-## Usage
+## 60-second quick start
 
-### Direct URL Loading
+### Direct URL loading
 
 ```csharp
 using System.Collections;
@@ -102,6 +130,32 @@ public sealed class ExampleLoader : MonoBehaviour
     }
 }
 ```
+
+## Public API map
+
+- `ObjectLoadRequest`: request model for URL/file/raw-byte loading, headers, auth, cache metadata, platform query, transform placement, and progress.
+- `ObjectLoadingPipeline`: orchestrates source resolution, content loading, instantiation, diagnostics, progress, telemetry, and latest-state snapshots.
+- `ObjectLoadResult`, `ObjectLoadError`, and `ObjectLoadTelemetry`: result, failure, timing, cache, and metadata outputs.
+- `IObjectLoadHandle`: cleanup handle that unloads instantiated content and the AssetBundle.
+- `DefaultObjectDiagnostics` and `ObjectDiagnosticsReport`: package-owned object, scene, renderer, material, shader, and warning reporting.
+- `ObjectLoadingDiagnostics.Register(...)`: optional Diagnostics provider registration when `com.deucarian.diagnostics` is installed.
+
+## Integrations
+
+Works with:
+
+- `com.deucarian.common` for transient Unity object cleanup,
+- `com.deucarian.logging` for package diagnostics,
+- optional `com.deucarian.diagnostics` through guarded/version-defined assemblies,
+- `com.deucarian.object-loading.api-integration` for API-backed source selection.
+
+Does not own:
+
+- backend lookup/download policy,
+- Diagnostics UI,
+- package installation,
+- renderer/material repair,
+- Addressables or glTF loading.
 
 ## Auth Headers
 
@@ -231,9 +285,21 @@ Import `Direct URL AssetBundle Loader` from Package Manager. The sample scene pr
 - status text,
 - Object Loading state and loaded-object metadata output.
 
-## Tests
+## Validation
 
-Run the package's EditMode tests in Unity. Tests cover request modeling, URL/source resolution, result handling, cleanup handles, and diagnostics behavior.
+Run the shared package validator from the repository root:
+
+```powershell
+python C:/Repositories/Package-Registry/Tools/deucarian_package_validator.py --registry-root C:/Repositories/Package-Registry --repository-root . --config deucarian-package.json
+```
+
+Run the package's EditMode tests in Unity after code or assembly definition changes. Tests cover request modeling, URL/source resolution, result handling, cleanup handles, and diagnostics behavior.
+
+Documentation-only updates should still pass:
+
+```powershell
+git diff --check
+```
 
 ## Architecture / Contributor Notes
 
