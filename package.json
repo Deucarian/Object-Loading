@@ -19,6 +19,9 @@
     "type": "git",
     "url": "git+https://github.com/Deucarian/Object-Loading.git"
   },
+  "documentationUrl": "https://github.com/Deucarian/Object-Loading/blob/main/README.md",
+  "changelogUrl": "https://github.com/Deucarian/Object-Loading/blob/main/CHANGELOG.md",
+  "licensesUrl": "https://github.com/Deucarian/Object-Loading/blob/main/LICENSE.md",
   "dependencies": {
     "com.deucarian.common": "0.1.0",
     "com.deucarian.logging": "1.0.1",
