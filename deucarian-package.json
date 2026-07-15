@@ -17,6 +17,9 @@
   "requiredDependencies": [
     "com.deucarian.common",
     "com.deucarian.logging",
+    "com.unity.modules.assetbundle",
+    "com.unity.modules.unitywebrequest",
+    "com.unity.modules.unitywebrequestassetbundle",
     "com.unity.nuget.newtonsoft-json"
   ],
   "optionalVersionDefinedDependencies": [
