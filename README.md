@@ -10,7 +10,7 @@ The package owns only the generic loading pipeline:
 
 It is designed for callers that already know the final AssetBundle URL.
 
-Current package version: `1.2.1`.
+Current package version: `1.2.2`.
 
 ## When to use it
 
