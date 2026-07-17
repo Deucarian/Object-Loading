@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.2 - 2026-07-17
+
+- Centralized transport cache and sensitive-header helpers, completed the Direct URL sample assembly, and aligned exact dependencies.
+
 ## 1.2.1 - 2026-06-22
 
 - Updated the exact `com.deucarian.logging` dependency to `1.0.1`.
