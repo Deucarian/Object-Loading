@@ -1,0 +1,16 @@
+{
+  "name": "Deucarian.ObjectLoading.Samples.DirectUrlLoader",
+  "rootNamespace": "Deucarian.ObjectLoading.Samples",
+  "references": [
+    "Deucarian.ObjectLoading"
+  ],
+  "includePlatforms": [],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": false,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}
