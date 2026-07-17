@@ -280,7 +280,9 @@ namespace Deucarian.ObjectLoading
             return UnityWebRequestAssetBundle.GetAssetBundle(url);
 #else
             Hash128 hash;
-            if (TryGetCacheHash(request, out hash))
+            if (ObjectLoadTransportUtility.TryParseCacheHash(
+                    request != null ? request.CacheHash : null,
+                    out hash))
             {
                 if (!string.IsNullOrWhiteSpace(request.CacheKey))
                 {
@@ -384,25 +386,6 @@ namespace Deucarian.ObjectLoading
                 CacheVersion = request != null ? request.CacheVersion : null,
                 Crc = request != null ? request.Crc : 0
             };
-        }
-
-        private static bool TryGetCacheHash(ObjectLoadRequest request, out Hash128 hash)
-        {
-            hash = default(Hash128);
-            if (request == null || string.IsNullOrWhiteSpace(request.CacheHash))
-            {
-                return false;
-            }
-
-            try
-            {
-                hash = Hash128.Parse(request.CacheHash.Trim());
-                return true;
-            }
-            catch
-            {
-                return false;
-            }
         }
 
         private static long ClampDownloadedBytes(ulong downloadedBytes)

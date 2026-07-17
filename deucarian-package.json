@@ -1,6 +1,7 @@
 {
   "packageId": "com.deucarian.object-loading",
   "displayName": "Deucarian Object Loading",
+  "samplePolicy": "playable-scene",
   "ownedCapabilities": [
     "object-loading"
   ],
@@ -9,7 +10,9 @@
     "Deucarian.ObjectLoading.Diagnostics"
   ],
   "editorAssemblies": [],
-  "sampleAssemblies": [],
+  "sampleAssemblies": [
+    "Deucarian.ObjectLoading.Samples.DirectUrlLoader"
+  ],
   "testAssemblies": [
     "Deucarian.ObjectLoading.Diagnostics.Tests",
     "Deucarian.ObjectLoading.Tests"

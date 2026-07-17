@@ -140,7 +140,9 @@ namespace Deucarian.ObjectLoading
             Dictionary<string, string> redactedHeaders = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             foreach (KeyValuePair<string, string> pair in CreateHeaders())
             {
-                redactedHeaders[pair.Key] = IsSensitiveHeader(pair.Key) ? RedactedValue : pair.Value;
+                redactedHeaders[pair.Key] = ObjectLoadTransportUtility.IsSensitiveHeader(pair.Key)
+                    ? RedactedValue
+                    : pair.Value;
             }
 
             return new ObjectLoadRequestDebugSnapshot
@@ -211,20 +213,6 @@ namespace Deucarian.ObjectLoading
                 : trimmed;
         }
 
-        private static bool IsSensitiveHeader(string name)
-        {
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                return false;
-            }
-
-            string normalized = name.Trim();
-            return normalized.Equals("Authorization", StringComparison.OrdinalIgnoreCase)
-                   || normalized.Equals("Proxy-Authorization", StringComparison.OrdinalIgnoreCase)
-                   || normalized.Equals("X-Api-Key", StringComparison.OrdinalIgnoreCase)
-                   || normalized.Equals("Api-Key", StringComparison.OrdinalIgnoreCase)
-                   || normalized.IndexOf("token", StringComparison.OrdinalIgnoreCase) >= 0;
-        }
     }
 
     public sealed class ObjectLoadRequestDebugSnapshot
