@@ -18,9 +18,9 @@ namespace Deucarian.ObjectLoading
             if (IsConfigured) throw new InvalidOperationException("A default object loading host is already registered.");
             return current = new Registration(host);
         }
-        public static Task<ObjectLoadResult> LoadAsync(string id, string url, Transform parent = null,
-            CancellationToken cancellationToken = default) => Host.LoadAsync(id, url, parent, cancellationToken);
-        public static void Unload(string id) => Host.Unload(id);
+        public static Task<ObjectLoadResult> LoadAsync(ObjectKey key, string url, Transform parent = null,
+            CancellationToken cancellationToken = default) => Host.LoadAsync(key, url, parent, cancellationToken);
+        public static void Unload(ObjectKey key) => Host.Unload(key);
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void Reset() { current = null; }

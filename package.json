@@ -21,7 +21,8 @@
   "dependencies": {
     "com.deucarian.common": "0.2.1",
     "com.deucarian.logging": "1.0.2",
-    "com.unity.nuget.newtonsoft-json": "3.2.2"
+    "com.unity.nuget.newtonsoft-json": "3.2.2",
+    "com.deucarian.editor": "1.10.8"
   },
   "samples": [
     {

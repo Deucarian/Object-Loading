@@ -20,7 +20,7 @@ namespace Deucarian.ObjectLoading.Tests
                     var pipeline = new WaitingPipeline { NativeWait = true };
                     var host = go.AddComponent<ObjectLoadingHost>();
                     host.Configure(() => pipeline);
-                    var pending = Objects.LoadAsync("preview", "https://example.test/model", cancellationToken: cancellation.Token);
+                    var pending = Objects.LoadAsync(new ObjectLoadingHostTestsKey("preview"), "https://example.test/model", cancellationToken: cancellation.Token);
                     yield return null;
                     cancellation.Cancel();
                     yield return null;
@@ -42,12 +42,12 @@ namespace Deucarian.ObjectLoading.Tests
                 var pipeline = new WaitingPipeline { ThrowOnDispose = true };
                 var host = go.AddComponent<ObjectLoadingHost>();
                 host.Configure(() => pipeline);
-                var pending = host.LoadAsync("preview", "https://example.test/model");
+                var pending = host.LoadAsync(new ObjectLoadingHostTestsKey("preview"), "https://example.test/model");
                 yield return null;
-                Assert.Throws<InvalidOperationException>(() => host.Unload("preview"));
+                Assert.Throws<InvalidOperationException>(() => host.Unload(new ObjectLoadingHostTestsKey("preview")));
                 Assert.That(pending.IsFaulted, Is.True);
                 Assert.That(pending.Exception, Is.Not.Null);
-                Assert.DoesNotThrow(() => host.Unload("preview"));
+                Assert.DoesNotThrow(() => host.Unload(new ObjectLoadingHostTestsKey("preview")));
             }
             finally { UnityEngine.Object.DestroyImmediate(go); }
         }
@@ -61,9 +61,9 @@ namespace Deucarian.ObjectLoading.Tests
                 var pipeline = new WaitingPipeline();
                 var host = go.AddComponent<ObjectLoadingHost>();
                 host.Configure(() => pipeline);
-                var pending = Objects.LoadAsync("preview", "https://example.test/model");
+                var pending = Objects.LoadAsync(new ObjectLoadingHostTestsKey("preview"), "https://example.test/model");
                 yield return null;
-                Objects.Unload("preview");
+                Objects.Unload(new ObjectLoadingHostTestsKey("preview"));
                 Assert.That(pending.IsCompleted, Is.True);
                 Assert.That(pending.Result.Succeeded, Is.False);
                 Assert.That(pipeline.Disposed, Is.EqualTo(1));

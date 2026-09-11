@@ -23,14 +23,14 @@ namespace Deucarian.ObjectLoading
             createPipeline = pipelineFactory;
         }
 
-        public Task<ObjectLoadResult> LoadAsync(string id, string url, Transform parent = null,
+        public Task<ObjectLoadResult> LoadAsync(ObjectKey key, string url, Transform parent = null,
             CancellationToken cancellationToken = default)
         {
             if (!isActiveAndEnabled) throw new InvalidOperationException("The object loading host must be enabled.");
-            if (string.IsNullOrWhiteSpace(id)) throw new ArgumentException("An object ID is required.", nameof(id));
+            string id = RequireKey(key);
             var request = ObjectLoadRequest.FromUrl(url);
             request.Parent = parent;
-            Unload(id);
+            UnloadById(id);
             var operation = new Operation(cancellationToken);
             operations.Add(id, operation);
             request.CancellationToken = operation.Cancellation.Token;
@@ -49,7 +49,12 @@ namespace Deucarian.ObjectLoading
         }
 
         /// <summary>Releases the handle or cancels an in-flight load. Unknown IDs are harmless.</summary>
-        public void Unload(string id)
+        public void Unload(ObjectKey key) => UnloadById(RequireKey(key));
+
+        private static string RequireKey(ObjectKey key) => key != null ? key.Id :
+            throw new ArgumentNullException(nameof(key), "Select an ObjectKey in the Inspector or reuse a named object definition.");
+
+        private void UnloadById(string id)
         {
             if (!operations.TryGetValue(id, out var operation)) return;
             Exception failure = null;
@@ -137,7 +142,7 @@ namespace Deucarian.ObjectLoading
             Exception failure = null;
             foreach (var id in cancelled)
             {
-                try { Unload(id); }
+                try { UnloadById(id); }
                 catch (Exception error) { failure = Combine(failure, error); }
             }
             if (failure != null) throw failure;
@@ -149,7 +154,7 @@ namespace Deucarian.ObjectLoading
             Exception failure = null;
             foreach (var id in new List<string>(operations.Keys))
             {
-                try { Unload(id); }
+                try { UnloadById(id); }
                 catch (Exception error) { failure = Combine(failure, error); }
             }
             if (failure != null) throw failure;
