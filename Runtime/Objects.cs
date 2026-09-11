@@ -20,6 +20,8 @@ namespace Deucarian.ObjectLoading
         }
         public static Task<ObjectLoadResult> LoadAsync(ObjectKey key, string url, Transform parent = null,
             CancellationToken cancellationToken = default) => Host.LoadAsync(key, url, parent, cancellationToken);
+        public static Task<ObjectLoadResult> LoadAsync(ObjectKey key, Transform parent = null,
+            CancellationToken cancellationToken = default) => Host.LoadAsync(key, parent, cancellationToken);
         public static void Unload(ObjectKey key) => Host.Unload(key);
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]

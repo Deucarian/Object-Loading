@@ -12,6 +12,7 @@ namespace Deucarian.ObjectLoading
     public sealed class ObjectLoadingHost : MonoBehaviour
     {
         [SerializeField] private bool registerAsDefault = true;
+        [SerializeField] private Unity.ObjectDefinitionCatalog definitionCatalog;
         private readonly Dictionary<string, Operation> operations = new Dictionary<string, Operation>(StringComparer.Ordinal);
         private Func<IObjectLoadingPipeline> createPipeline = () => new ObjectLoadingPipeline();
         private IDisposable registration;
@@ -21,6 +22,13 @@ namespace Deucarian.ObjectLoading
             if (pipelineFactory == null) throw new ArgumentNullException(nameof(pipelineFactory));
             if (operations.Count != 0) throw new InvalidOperationException("Unload existing objects before changing the pipeline factory.");
             createPipeline = pipelineFactory;
+        }
+
+        public Task<ObjectLoadResult> LoadAsync(ObjectKey key, Transform parent = null,
+            CancellationToken cancellationToken = default)
+        {
+            var catalog = definitionCatalog != null ? definitionCatalog : Unity.ObjectDefinitionCatalog.LoadProject();
+            return LoadAsync(key, catalog.Get(key).Url, parent, cancellationToken);
         }
 
         public Task<ObjectLoadResult> LoadAsync(ObjectKey key, string url, Transform parent = null,
