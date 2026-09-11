@@ -1,0 +1,8 @@
+{
+  "name": "Deucarian.ObjectLoading.PlayModeTests",
+  "references": ["Deucarian.ObjectLoading"],
+  "autoReferenced": false,
+  "defineConstraints": ["UNITY_INCLUDE_TESTS"],
+  "optionalUnityReferences": ["TestAssemblies"],
+  "noEngineReferences": false
+}

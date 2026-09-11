@@ -15,7 +15,8 @@
   ],
   "testAssemblies": [
     "Deucarian.ObjectLoading.Diagnostics.Tests",
-    "Deucarian.ObjectLoading.Tests"
+    "Deucarian.ObjectLoading.Tests",
+    "Deucarian.ObjectLoading.PlayModeTests"
   ],
   "requiredDependencies": [
     "com.deucarian.common",

@@ -160,6 +160,12 @@ namespace Deucarian.ObjectLoading
                 originalProgress?.Invoke(progress);
             };
 
+            ObjectContentLoadResult contentResult = null;
+            ObjectInstantiationResult instantiationResult = null;
+            bool handedOff = false;
+            try
+            {
+
             if (request.CancellationToken.IsCancellationRequested)
             {
                 ObjectLoadResult result = ObjectLoadResult.Failure(ObjectLoadError.Create(
@@ -191,7 +197,6 @@ namespace Deucarian.ObjectLoading
 
             request.ReportProgress(ObjectLoadPhase.ResolvingSource, 1f, "Object source resolved.", 0, totalTimer.ElapsedMilliseconds);
             AssetBundleContent content = null;
-            ObjectContentLoadResult contentResult = null;
             yield return _contentLoader.LoadAsync(sourceResult.Source, request, value => contentResult = value);
             if (contentResult == null || !contentResult.Succeeded)
             {
@@ -209,7 +214,7 @@ namespace Deucarian.ObjectLoading
             }
 
             content = contentResult.Content;
-            ObjectInstantiationResult instantiationResult = null;
+            request.CancellationToken.ThrowIfCancellationRequested();
             Stopwatch instantiateTimer = Stopwatch.StartNew();
             yield return _instantiator.InstantiateAsync(content, request, value => instantiationResult = value);
             instantiateTimer.Stop();
@@ -223,7 +228,6 @@ namespace Deucarian.ObjectLoading
 
             if (instantiationResult == null || !instantiationResult.Succeeded)
             {
-                content?.Unload(false);
                 ObjectLoadError error = instantiationResult?.Error ?? ObjectLoadError.Create(
                     ObjectLoadErrorCode.InstantiationFailed,
                     "Could not instantiate object content.");
@@ -244,7 +248,23 @@ namespace Deucarian.ObjectLoading
             ObjectLoadResult success = ObjectLoadResult.Success(instantiationResult.Message, instantiationResult.Handle, report, telemetry);
             RecordResult(success);
             RestoreProgress(request, originalProgress);
+            handedOff = true;
             onCompleted?.Invoke(success);
+            }
+            finally
+            {
+                RestoreProgress(request, originalProgress);
+                _isLoading = false;
+                if (!handedOff)
+                {
+                    if (instantiationResult?.Handle != null)
+                    {
+                        instantiationResult.Handle.Dispose();
+                        if (ReferenceEquals(_lastHandle, instantiationResult.Handle)) _lastHandle = null;
+                    }
+                    else contentResult?.Content?.Unload(false);
+                }
+            }
         }
 
         public void UnloadLast()
