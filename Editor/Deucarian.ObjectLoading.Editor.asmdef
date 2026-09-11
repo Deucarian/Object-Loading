@@ -1,0 +1,19 @@
+{
+  "name": "Deucarian.ObjectLoading.Editor",
+  "rootNamespace": "Deucarian.ObjectLoading.Editor",
+  "references": [
+    "Deucarian.ObjectLoading",
+    "Deucarian.Editor"
+  ],
+  "includePlatforms": [
+    "Editor"
+  ],
+  "excludePlatforms": [],
+  "allowUnsafeCode": false,
+  "overrideReferences": false,
+  "precompiledReferences": [],
+  "autoReferenced": true,
+  "defineConstraints": [],
+  "versionDefines": [],
+  "noEngineReferences": false
+}

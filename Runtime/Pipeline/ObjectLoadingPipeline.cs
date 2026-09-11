@@ -160,6 +160,12 @@ namespace Deucarian.ObjectLoading
                 originalProgress?.Invoke(progress);
             };
 
+            ObjectContentLoadResult contentResult = null;
+            ObjectInstantiationResult instantiationResult = null;
+            bool handedOff = false;
+            try
+            {
+
             if (request.CancellationToken.IsCancellationRequested)
             {
                 ObjectLoadResult result = ObjectLoadResult.Failure(ObjectLoadError.Create(
@@ -191,7 +197,6 @@ namespace Deucarian.ObjectLoading
 
             request.ReportProgress(ObjectLoadPhase.ResolvingSource, 1f, "Object source resolved.", 0, totalTimer.ElapsedMilliseconds);
             AssetBundleContent content = null;
-            ObjectContentLoadResult contentResult = null;
             yield return _contentLoader.LoadAsync(sourceResult.Source, request, value => contentResult = value);
             if (contentResult == null || !contentResult.Succeeded)
             {
@@ -209,7 +214,7 @@ namespace Deucarian.ObjectLoading
             }
 
             content = contentResult.Content;
-            ObjectInstantiationResult instantiationResult = null;
+            request.CancellationToken.ThrowIfCancellationRequested();
             Stopwatch instantiateTimer = Stopwatch.StartNew();
             yield return _instantiator.InstantiateAsync(content, request, value => instantiationResult = value);
             instantiateTimer.Stop();
@@ -223,7 +228,6 @@ namespace Deucarian.ObjectLoading
 
             if (instantiationResult == null || !instantiationResult.Succeeded)
             {
-                content?.Unload(false);
                 ObjectLoadError error = instantiationResult?.Error ?? ObjectLoadError.Create(
                     ObjectLoadErrorCode.InstantiationFailed,
                     "Could not instantiate object content.");
@@ -244,7 +248,23 @@ namespace Deucarian.ObjectLoading
             ObjectLoadResult success = ObjectLoadResult.Success(instantiationResult.Message, instantiationResult.Handle, report, telemetry);
             RecordResult(success);
             RestoreProgress(request, originalProgress);
+            handedOff = true;
             onCompleted?.Invoke(success);
+            }
+            finally
+            {
+                RestoreProgress(request, originalProgress);
+                _isLoading = false;
+                if (!handedOff)
+                {
+                    if (instantiationResult?.Handle != null)
+                    {
+                        instantiationResult.Handle.Dispose();
+                        if (ReferenceEquals(_lastHandle, instantiationResult.Handle)) _lastHandle = null;
+                    }
+                    else contentResult?.Content?.Unload(false);
+                }
+            }
         }
 
         public void UnloadLast()
@@ -351,102 +371,6 @@ namespace Deucarian.ObjectLoading
                 {
                     state.LoadedObjects.Add(info);
                 }
-            }
-        }
-
-        private sealed class ByteArrayObjectSourceContentLoader : IObjectSourceContentLoader
-        {
-            private readonly IObjectDownloader _downloader;
-            private readonly IObjectContentLoader _contentLoader;
-
-            public ByteArrayObjectSourceContentLoader(IObjectDownloader downloader, IObjectContentLoader contentLoader)
-            {
-                _downloader = downloader ?? throw new ArgumentNullException(nameof(downloader));
-                _contentLoader = contentLoader ?? throw new ArgumentNullException(nameof(contentLoader));
-            }
-
-            public IEnumerator LoadAsync(ObjectSource source,
-                                         ObjectLoadRequest request,
-                                         Action<ObjectContentLoadResult> onCompleted)
-            {
-                if (source == null)
-                {
-                    onCompleted?.Invoke(ObjectContentLoadResult.Failure(ObjectLoadError.Create(
-                        ObjectLoadErrorCode.InvalidRequest,
-                        "Object source is missing.")));
-                    yield break;
-                }
-
-                Stopwatch downloadTimer = Stopwatch.StartNew();
-                ObjectLoadTelemetry telemetry = new ObjectLoadTelemetry
-                {
-                    LoadStrategy = source.Type == ObjectSourceType.RawBytes ? "raw-bytes-legacy" : "byte-array-legacy",
-                    CacheMode = request != null ? request.CacheMode : ObjectLoadCacheMode.Default,
-                    CacheKey = request != null ? request.CacheKey : null,
-                    CacheHash = request != null ? request.CacheHash : null,
-                    CacheVersion = request != null ? request.CacheVersion : null,
-                    Crc = request != null ? request.Crc : 0,
-                    CacheStatus = "not-cacheable"
-                };
-
-                byte[] bytes = source.Bytes;
-                if (source.Type != ObjectSourceType.RawBytes)
-                {
-                    request?.ReportProgress(ObjectLoadPhase.Downloading, 0f, "Downloading AssetBundle bytes.", 0, 0, telemetry);
-                    ObjectDownloadResult downloadResult = null;
-                    yield return _downloader.DownloadAsync(source, request, value => downloadResult = value);
-                    downloadTimer.Stop();
-
-                    if (downloadResult == null || !downloadResult.Succeeded)
-                    {
-                        ObjectLoadError error = downloadResult?.Error ?? ObjectLoadError.Create(
-                            ObjectLoadErrorCode.DownloadFailed,
-                            "Could not download object content.");
-                        request?.ReportProgress(ObjectLoadPhase.Failed, 1f, error.Message, telemetry.BytesReceived, 0, telemetry);
-                        onCompleted?.Invoke(ObjectContentLoadResult.Failure(error));
-                        yield break;
-                    }
-
-                    bytes = downloadResult.Bytes;
-                    telemetry.DownloadTimeMs = downloadTimer.ElapsedMilliseconds;
-                    telemetry.BytesReceived = bytes != null ? bytes.Length : 0;
-                    request?.ReportProgress(ObjectLoadPhase.Downloading, 1f, "AssetBundle bytes downloaded.", telemetry.BytesReceived, 0, telemetry);
-                }
-                else
-                {
-                    downloadTimer.Stop();
-                }
-
-                telemetry.BytesReceived = bytes != null ? bytes.Length : 0;
-
-                Stopwatch bundleTimer = Stopwatch.StartNew();
-                request?.ReportProgress(ObjectLoadPhase.LoadingBundle, 0f, "Loading AssetBundle from bytes.", telemetry.BytesReceived, 0, telemetry);
-                ObjectContentLoadResult contentResult = null;
-                yield return _contentLoader.LoadAsync(bytes, request, value => contentResult = value);
-                bundleTimer.Stop();
-
-                if (contentResult == null || !contentResult.Succeeded)
-                {
-                    ObjectLoadError error = contentResult != null
-                        ? contentResult.Error
-                        : ObjectLoadError.Create(
-                        ObjectLoadErrorCode.ContentLoadFailed,
-                        "Could not load object content.");
-                    request?.ReportProgress(ObjectLoadPhase.Failed, 1f, error.Message, telemetry.BytesReceived, 0, telemetry);
-                    onCompleted?.Invoke(contentResult ?? ObjectContentLoadResult.Failure(error));
-                    yield break;
-                }
-
-                telemetry.BundleLoadTimeMs = bundleTimer.ElapsedMilliseconds;
-                telemetry.AssetCount = contentResult.Content != null && contentResult.Content.AssetNames != null
-                    ? contentResult.Content.AssetNames.Length
-                    : 0;
-                telemetry.SceneCount = contentResult.Content != null && contentResult.Content.ScenePaths != null
-                    ? contentResult.Content.ScenePaths.Length
-                    : 0;
-                request?.ReportProgress(ObjectLoadPhase.DiscoveringContent, 1f, "AssetBundle content is ready.", telemetry.BytesReceived, 0, telemetry);
-
-                onCompleted?.Invoke(ObjectContentLoadResult.Success(contentResult.Content, telemetry));
             }
         }
 

@@ -1,5 +1,7 @@
 # Deucarian Object Loading
 
+For simple calls and setup, see [Simple usage](Documentation~/SimpleUsage.md).
+
 ## What this is
 
 `com.deucarian.object-loading` is a small Unity UPM package for loading AssetBundle-based object or scene content at runtime.
