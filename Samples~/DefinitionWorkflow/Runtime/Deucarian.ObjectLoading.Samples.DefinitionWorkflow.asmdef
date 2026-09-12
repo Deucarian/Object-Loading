@@ -1,0 +1,6 @@
+{
+  "name": "Deucarian.ObjectLoading.Samples.DefinitionWorkflow",
+  "references": [
+    "Deucarian.ObjectLoading"
+  ]
+}
