@@ -1,5 +1,17 @@
 # Deucarian Object Loading
 
+## Typed definition workflow
+
+The typed definition supplies a default URL. This offline scene substitutes a local prefab pipeline; the real loading host still owns cancellation, replacement and cleanup.
+
+Start with the [Definition Workflow walkthrough](Documentation~/DefinitionWorkflow.md).
+Import **Definition Workflow** in Package Manager for a configured sample scene
+and short caller scripts. Definitions can be edited as assets or editable C# declarations; generated keys
+work in code and Inspector dropdowns.
+
+
+For simple calls and setup, see [Simple usage](Documentation~/SimpleUsage.md).
+
 ## What this is
 
 `com.deucarian.object-loading` is a small Unity UPM package for loading AssetBundle-based object or scene content at runtime.
@@ -10,7 +22,7 @@ The package owns only the generic loading pipeline:
 
 It is designed for callers that already know the final AssetBundle URL.
 
-Current package version: `1.2.2`.
+Current package version: `1.3.0`.
 
 ## When to use it
 

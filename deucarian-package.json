@@ -9,18 +9,24 @@
     "Deucarian.ObjectLoading",
     "Deucarian.ObjectLoading.Diagnostics"
   ],
-  "editorAssemblies": [],
+  "editorAssemblies": [
+    "Deucarian.ObjectLoading.Editor"
+  ],
   "sampleAssemblies": [
-    "Deucarian.ObjectLoading.Samples.DirectUrlLoader"
+    "Deucarian.ObjectLoading.Samples.DefinitionWorkflow",
+    "Deucarian.ObjectLoading.Samples.DirectUrlLoader",
+    "Deucarian.Samples.ObjectLoading.DefinitionDeclarations"
   ],
   "testAssemblies": [
     "Deucarian.ObjectLoading.Diagnostics.Tests",
+    "Deucarian.ObjectLoading.PlayModeTests",
     "Deucarian.ObjectLoading.Tests"
   ],
   "requiredDependencies": [
     "com.deucarian.common",
     "com.deucarian.logging",
-    "com.unity.nuget.newtonsoft-json"
+    "com.unity.nuget.newtonsoft-json",
+    "com.deucarian.editor"
   ],
   "optionalVersionDefinedDependencies": [
     "com.deucarian.diagnostics"

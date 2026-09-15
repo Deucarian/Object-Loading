@@ -1,0 +1,5 @@
+{
+  "name": "Deucarian.Samples.ObjectLoading.DefinitionDeclarations",
+  "references": ["Deucarian.Editor", "Deucarian.ObjectLoading.Editor"],
+  "includePlatforms": ["Editor"]
+}

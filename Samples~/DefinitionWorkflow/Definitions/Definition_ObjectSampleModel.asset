@@ -1,0 +1,17 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dbff50217804e0749b319d79aef10238, type: 3}
+  m_Name: Definition_ObjectSampleModel
+  m_EditorClassIdentifier: Deucarian.ObjectLoading::Deucarian.ObjectLoading.Unity.ObjectDefinitionAsset
+  id: 441fa629d78d48c09143ef9055558725
+  displayName: ObjectSampleModel
+  url: https://sample.invalid/model
